@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:registry.platformio.org)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:bluepad32.readthedocs.io)",
+      "Bash(pip install:*)",
+      "Bash(python -c \"import sys; sys.stdout.buffer.write\\(sys.stdin.buffer.read\\(\\)\\)\")",
+      "Bash(python -c \"import pdfplumber; pdf = pdfplumber.open\\(''''MKS-SERVO42C-User-Manual-V1.1.2.pdf''''\\); [print\\(f''''--- Page {i+1} ---\\\\n'''', p.extract_text\\(\\)\\) for i, p in enumerate\\(pdf.pages\\)]; pdf.close\\(\\)\")",
+      "Bash(python -c \"import PyPDF2; r=PyPDF2.PdfReader\\(''''MKS-SERVO42C-User-Manual-V1.1.2.pdf''''\\); [print\\(f''''--- Page {i+1} ---\\\\n'''', r.pages[i].extract_text\\(\\)\\) for i in range\\(len\\(r.pages\\)\\)]\")",
+      "Bash(python -c \":*)"
+    ]
+  }
+}
