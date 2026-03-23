@@ -46,81 +46,73 @@ Wish-list
 ---End PHASE2 Goals---
 
 ## Session History & Continuation Guide
-*Updated: 2026-03-22 (session 3 — end of day)*
+*Updated: 2026-03-23 (session 4 — end of day)*
 
 ---
 
-### PICK UP HERE TOMORROW
+### PICK UP HERE NEXT SESSION
 
-**The immediate next task is switching from UART drive mode to Step/Dir/EN (stepper) mode.**
-This is the decision we landed on at end of session because UART velocity control is unreliable
-for real-time stop/start from the web UI (MKS driver holds last velocity indefinitely).
+**Tilt MKS Servo42C driver is dead — waiting on replacement (~$20-25 Amazon/AliExpress).**
+H-bridge FETs on the tilt driver all cooked on plug-in (likely motor wire short at connector).
+Before installing replacement: check tilt motor wiring with multimeter for phase-to-phase short.
 
-**Stepper mode is already fully implemented in the firmware** — just needs the MKS driver
-reconfigured and the Step/Dir/EN pins wired up. Three steps:
+**While waiting on the part — work on Pi software side (tracking, web UI polish, face recognition).**
 
-1. **On each MKS driver OLED:** Change Work Mode → `CR_vFOC` (was `CR_UART`). Leave all else the same.
+**When replacement arrives:**
+1. Check motor wiring for shorts before powering up
+2. Both MKS drivers were already switched to `CR_vFOC` — new driver needs same OLED change
+3. Flash `env:esp32dev_stepper` is already built and tested on pan axis — just need tilt wired
+4. Current pin assignments (already in config.h, already flashed):
+   | Driver | STEP | DIR | EN  |
+   |--------|------|-----|-----|
+   | Pan    | 32   | 33  | 25  |
+   | Tilt   | 26   | 27  | 14  |
+5. Test via serial monitor: `vel tilt 20` → move, `stop tilt` → stop
+6. **Known issue:** Stop from web UI felt unresponsive — likely because `DEFAULT_ACCEL_DEG_S2=30.0f`
+   is too slow (1.5s to stop from 45°/s). **Bump to 360.0f in config.h before next test.**
 
-2. **Wire 3 extra pins per driver** (UART wires stay connected for homing/encoder):
-   | Driver | STEP pin | DIR pin | EN pin |
-   |--------|----------|---------|--------|
-   | Pan    | GPIO 25  | GPIO 26 | GPIO 27 |
-   | Tilt   | GPIO 32  | GPIO 33 | GPIO 19 |
-
-3. **In PlatformIO:** select environment `esp32dev_stepper` (bottom bar in VS Code) and Upload.
-
-4. **Test via serial monitor** at 115200:
-   - `vel pan 30` → should move
-   - `stop all` → should stop instantly
-   - If direction wrong: flip `PAN_DIR_INVERT` or `TILT_DIR_INVERT` in `include/config.h` and reflash
-
-5. **On Pi:** `git pull`, install python-dotenv (`pip install python-dotenv`), restart server.
-   Then set inversion in `pi/.env` if needed:
-   ```
-   PAN_INVERT=true
-   TILT_INVERT=true
-   ```
+**ESP32 GPIO notes learned this session:**
+- GPIOs 34, 35, 36, 39 are **input-only** — never use for STEP/DIR/EN
+- GPIO 12 is a **strapping pin** (flash voltage) — avoid for outputs connected to pull-ups
+- ESP32 WROOM-32 has **no native USB** — no D+/D- on any GPIO (uses CP2102/CH340 bridge chip)
 
 ---
 
-### Current Hardware Status (as of 2026-03-22 end of session)
+### Current Hardware Status (as of 2026-03-23 end of session)
 
-- **ESP32:** Firmware written and on GitHub. **Partially tested** — was running in CR_UART mode.
-  - UART mode had unreliable stop behavior (MKS holds last velocity) — switching to stepper mode.
-  - `vel` CLI command added this session and flashed (user confirmed).
-  - `PAN_DIR_INVERT` / `TILT_DIR_INVERT` flags added to config.h for easy direction fix.
-  - **Next flash must use `env:esp32dev_stepper`** after changing MKS work mode to CR_vFOC.
+- **ESP32:** Flashed `esp32dev_stepper`. Stepper mode confirmed working on pan (motor starts on command).
+  - Both MKS drivers switched to CR_vFOC via OLED
+  - **Tilt MKS driver is dead** — FETs blown on plug-in. Replacement on order.
+  - Stop from web UI was unresponsive — accel too low (30°/s²). Bump to 360°/s² before next test.
+  - `PAN_DIR_INVERT` / `TILT_DIR_INVERT` in config.h — not yet confirmed correct (only pan tested briefly)
 
 - **Pi 4:** Running, server working, video streaming confirmed in browser.
   - Hostname: `CIWS` (ssh pi@CIWS.local)
   - Camera: **IMX219** (Pi Camera Module 2 / NoIR v2) — confirmed working
   - Camera rotation: `CAMERA_ROTATION=2` in config.py (camera is physically inverted — 180°)
-  - `python-dotenv` added to requirements.txt — run `pip install python-dotenv` on Pi after `git pull`
-  - `.env` file does NOT exist on the Pi yet — create it at `~/PTZ_controller/pi/.env`
-  - Git is installed and repo is cloned at `~/PTZ_controller`
+  - Git installed, repo cloned at `~/PTZ_controller`
+  - `.env` file does NOT exist on Pi yet — create at `~/PTZ_controller/pi/.env`
   - Server launch: `cd ~/PTZ_controller/pi && source venv/bin/activate && uvicorn app.main:app --host 0.0.0.0 --port 8000`
+  - **Need to `git pull` on Pi** — session 4 changes not yet pulled
 
-- **Web UI:** Working. Video streams. Controls partially working but:
-  - Stop on release was broken in UART mode — will be fixed by stepper mode switch
-  - Joystick now has squared response curve (feels better at low speed)
-  - Default speed lowered to 45°/s (was 180°/s)
-  - Axis inversion via `.env` file (PAN_INVERT / TILT_INVERT) — `.env` now actually loads via dotenv
+- **Web UI:** Working. Video streams. Controls functional but stop response needs accel fix.
+  - Joystick: squared response curve, default 45°/s
+  - Axis inversion via `.env` (PAN_INVERT / TILT_INVERT)
 
 - **Gimbal mechanics:** Not yet assembled with Pi on end effector. Camera ribbon routing TBD.
 
-- **YOLO/ultralytics:** `Illegal instruction` crash on Pi 4 — torch build incompatible with ARM Cortex-A72.
-  Skip for now. Face detection (MediaPipe) works fine and is the primary tracking use case.
+- **YOLO/ultralytics:** `Illegal instruction` crash on Pi 4 — skip. Use MediaPipe for detection.
 
 ---
 
 ### What Has Been Built
 
-**ESP32 Firmware — all written, on GitHub, stepper mode ready to flash:**
+**ESP32 Firmware — flashed and running stepper mode:**
 - `src/drivers/MKSServo42C.h/.cpp` — UART driver (motion, read-back, homing, raw diag)
 - `src/motion/MotionController.h/.cpp` — dual-mode (UART + stepper), velocity, homing, NVS
 - `src/input/GamepadInput.h/.cpp` — Bluepad32 Xbox One S
-- `src/cli/CLI.h/.cpp` — GNU CLI including new `vel` command
-- `include/config.h` — pins, gear ratios, `PAN_DIR_INVERT`, `TILT_DIR_INVERT`
+- `src/cli/CLI.h/.cpp` — GNU CLI including `vel` command
+- `include/config.h` — pins (Pan:32/33/25, Tilt:26/27/14), gear ratios, dir invert flags
 
 **Pi Application (`pi/` directory) — all written, on GitHub, running on Pi:**
 
@@ -230,18 +222,17 @@ reconfigured and the Step/Dir/EN pins wired up. Three steps:
 
 ### What Still Needs Doing (in order)
 
-**IMMEDIATE — Switch to stepper drive mode (do this first tomorrow):**
-1. Change both MKS drivers to `CR_vFOC` via OLED
-2. Wire Step/Dir/EN pins (see table in "PICK UP HERE" section above)
-3. Flash `env:esp32dev_stepper` from PlatformIO
-4. Test `vel pan 30` / `stop all` in serial monitor — stop should be instant
-5. Adjust `PAN_DIR_INVERT` / `TILT_DIR_INVERT` in config.h if direction wrong, reflash
+**IMMEDIATE (hardware blocked — waiting on replacement tilt driver):**
+1. Check tilt motor wiring for phase-to-phase short before new driver arrives
+2. When driver arrives: switch to CR_vFOC via OLED, wire Step/Dir/EN (26/27/14), test
+3. **Bump `DEFAULT_ACCEL_DEG_S2` to `360.0f` in config.h** before next motor test
+4. Confirm `PAN_DIR_INVERT` / `TILT_DIR_INVERT` correct on both axes, reflash if needed
 
-**Pi — after stepper mode confirmed working:**
-1. `git pull` on Pi
-2. `pip install python-dotenv` (or `pip install -r requirements.txt`)
-3. Create `pi/.env` with inversion flags if needed
-4. Restart server and test web UI controls — stop-on-release should now work
+**Pi — do now while waiting on hardware:**
+1. `git pull` on Pi (session 4 changes pending)
+2. Create `pi/.env` if it doesn't exist
+3. Restart server, confirm web UI still working
+4. Work on tracking / face recognition software (no motor needed)
 
 **Tracking — after controls are solid:**
 1. Enable Face detection in dropdown
