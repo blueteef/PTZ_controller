@@ -61,6 +61,8 @@ class VisionPipeline:
         with self._detector_lock:
             if mode == "none":
                 self._detector = NullDetector()
+                # Switching to none stops tracking automatically
+                state.tracking_enabled = False
             elif mode == "face":
                 self._detector = FaceDetector()
             elif mode == "yolo":
@@ -96,6 +98,12 @@ class VisionPipeline:
 
             annotated = _draw_boxes(frame, detections)
             state.set_annotated(annotated, detections)
+
+            # Feed detections to tracker (no-op when tracking disabled)
+            import app.vision.tracker as _t
+            if _t.tracker is not None and state.tracking_enabled:
+                h, w = frame.shape[:2]
+                _t.tracker.update(detections, frame_w=w, frame_h=h)
 
 
 def _draw_boxes(frame: np.ndarray, detections: list[Detection]) -> np.ndarray:
