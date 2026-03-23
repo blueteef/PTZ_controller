@@ -134,20 +134,35 @@ function wireDetectionMode() {
 function wireSpeedSlider() {
   const slider = document.getElementById("speed-slider");
   const label  = document.getElementById("speed-val");
-  label.textContent = slider.value;
+
+  // Use server-configured default if available, else 45
+  const defaultSpeed = window._ptz_default_speed ?? 45;
+  slider.value = defaultSpeed;
+  label.textContent = defaultSpeed;
+  window._ptz_max_vel = defaultSpeed;
+
   slider.oninput = () => {
     label.textContent = slider.value;
-    // Sent on each move command via controls.js maxVel variable
     window._ptz_max_vel = parseFloat(slider.value);
   };
-  window._ptz_max_vel = parseFloat(slider.value);
 }
 
 // ---------------------------------------------------------------------------
 // Boot
 // ---------------------------------------------------------------------------
 
-window.addEventListener("DOMContentLoaded", () => {
+window.addEventListener("DOMContentLoaded", async () => {
+  // Fetch server config before wiring controls so defaults are applied
+  try {
+    const res = await fetch("/api/settings/ui");
+    const cfg = await res.json();
+    window._ptz_default_speed = cfg.default_speed;
+    window._ptz_cam_w = 1280;
+    window._ptz_cam_h = 720;
+  } catch (e) {
+    console.warn("Could not fetch server config", e);
+  }
+
   connect();
   wireButtons();
   wireDetectionMode();

@@ -27,10 +27,16 @@ function startSending() {
   _velInterval = setInterval(_sendVelocity, 1000 / VEL_SEND_HZ);
 }
 
+function _curve(v) {
+  // Squared response: preserves sign, gives precision at low deflection
+  // and full speed at max. Feels much smoother than linear.
+  return Math.sign(v) * v * v;
+}
+
 function _sendVelocity() {
-  const maxV = window._ptz_max_vel ?? 180;
-  const pan  = _panTarget  * maxV;
-  const tilt = _tiltTarget * maxV;
+  const maxV = window._ptz_max_vel ?? 45;
+  const pan  = _curve(_panTarget)  * maxV;
+  const tilt = _curve(_tiltTarget) * maxV;
   if (Math.abs(pan) < 0.5 && Math.abs(tilt) < 0.5) {
     stopSending();
     return;

@@ -6,11 +6,22 @@ PUT /api/settings   → update speed/accel on ESP32 (and optionally save)
 """
 
 from fastapi import APIRouter
+from app import config
 from app.schemas import MotionSettingsRequest
 from app.serial_bridge.bridge import bridge
 from app.serial_bridge import protocol
 
 router = APIRouter(prefix="/api/settings")
+
+
+@router.get("/ui")
+async def get_ui_config():
+    """Frontend config values derived from server config."""
+    return {
+        "default_speed":  config.JOYSTICK_DEFAULT_SPEED,
+        "pan_invert":     config.PAN_INVERT,
+        "tilt_invert":    config.TILT_INVERT,
+    }
 
 
 @router.get("")

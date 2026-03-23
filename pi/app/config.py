@@ -65,6 +65,18 @@ FACE_RECOGNITION_TOLERANCE = float(os.getenv("FACE_RECOGNITION_TOLERANCE", "0.5"
 FACE_ENROLL_FRAMES         = 5   # frames captured per enrollment session
 
 # ---------------------------------------------------------------------------
+# Joystick / control
+# ---------------------------------------------------------------------------
+# Invert axis direction if physical wiring or mount causes reversed motion.
+# True = flip the sign of velocity commands on that axis.
+PAN_INVERT  = os.getenv("PAN_INVERT",  "false").lower() == "true"
+TILT_INVERT = os.getenv("TILT_INVERT", "false").lower() == "true"
+
+# Default max speed for the web UI speed slider (deg/s).
+# 180 is the firmware max — start lower for manageable joystick feel.
+JOYSTICK_DEFAULT_SPEED = float(os.getenv("JOYSTICK_DEFAULT_SPEED", "45.0"))
+
+# ---------------------------------------------------------------------------
 # Tracking PID
 # ---------------------------------------------------------------------------
 PID_KP             = 0.08    # proportional gain

@@ -29,6 +29,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from app import config
 from app.state import state
+
 from app.schemas import make_telemetry, make_detections, make_error
 from app.serial_bridge import protocol
 from app.serial_bridge.bridge import bridge
@@ -105,6 +106,8 @@ async def _handle_message(ws: WebSocket, raw: str) -> None:
     if t == "velocity":
         pan  = float(msg.get("pan",  0.0))
         tilt = float(msg.get("tilt", 0.0))
+        if config.PAN_INVERT:  pan  = -pan
+        if config.TILT_INVERT: tilt = -tilt
         bridge.send(protocol.cmd_vel("pan",  pan))
         bridge.send(protocol.cmd_vel("tilt", tilt))
 
