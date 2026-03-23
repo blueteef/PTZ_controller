@@ -19,11 +19,15 @@ bool MotionController::begin() {
     _mutex = xSemaphoreCreateMutex();
     if (!_mutex) return false;
 
-    // MKS UART drivers — same in both modes
+    // MKS UART drivers — skipped for axes using A4988 (no UART on A4988)
+#if !defined(PAN_DRIVER_A4988)
     _driver[0] = new MKSServo42C(Serial2, MKS_PAN_ADDR);
-    _driver[1] = new MKSServo42C(Serial1, MKS_TILT_ADDR);
     _driver[0]->begin(MKS_BAUD_RATE);
+#endif
+#if !defined(TILT_DRIVER_A4988)
+    _driver[1] = new MKSServo42C(Serial1, MKS_TILT_ADDR);
     _driver[1]->begin(MKS_BAUD_RATE);
+#endif
 
 #ifdef PTZ_DRIVE_STEPPER
     _engine.init();
@@ -273,8 +277,8 @@ void MotionController::emergencyStop() {
     for (int i = 0; i < 2; i++) { _driver[i]->stopMotor(); _moving[i] = false; }
 #endif
     xSemaphoreGive(_mutex);
-    _driver[0]->emergencyStop();
-    _driver[1]->emergencyStop();
+    if (_driver[0]) _driver[0]->emergencyStop();
+    if (_driver[1]) _driver[1]->emergencyStop();
 }
 
 // =============================================================================
@@ -291,6 +295,7 @@ bool MotionController::startHoming(AxisId axis) {
 #else
     stop(axis);
 #endif
+    if (!_driver[idx]) return false;   // A4988: no homing support
     if (!_driver[idx]->goHome()) return false;
     _homing[idx]          = true;
     _homingStartMs[idx]   = millis();
@@ -306,6 +311,10 @@ bool MotionController::isHoming(AxisId axis) const {
 
 void MotionController::pollHoming(AxisId axis) {
     int idx = (int)axis;
+
+    // A4988 has no UART — startHoming() returns false so _homing is never set,
+    // but guard here for safety.
+    if (!_driver[idx]) { _homing[idx] = false; return; }
 
     // ── Software homing path ──────────────────────────────────────────────
     // Used when the driver didn't respond to 0x91 (older firmware).
@@ -391,6 +400,7 @@ void MotionController::pollHoming(AxisId axis) {
 }
 
 bool MotionController::calibrateEncoder(AxisId axis) {
+    if (!_driver[(int)axis]) return false;
     stop(axis);
     return _driver[(int)axis]->calibrateEncoder();
 }
@@ -425,18 +435,22 @@ bool MotionController::isRunning(AxisId axis) const {
 }
 
 bool MotionController::readDriverStatus(AxisId axis, uint8_t& statusByte) {
+    if (!_driver[(int)axis]) return false;
     return _driver[(int)axis]->readStatus(statusByte);
 }
 
 bool MotionController::readEncoderAngle(AxisId axis, float& angleDeg) {
+    if (!_driver[(int)axis]) return false;
     return _driver[(int)axis]->readEncoderAngle(angleDeg);
 }
 
 bool MotionController::pingDriver(AxisId axis) {
+    if (!_driver[(int)axis]) return false;
     return _driver[(int)axis]->ping();
 }
 
 void MotionController::diagAxis(AxisId axis, uint8_t func, uint32_t timeoutMs) {
+    if (!_driver[(int)axis]) return;
     _driver[(int)axis]->sendRaw(func, nullptr, 0, timeoutMs);
 }
 

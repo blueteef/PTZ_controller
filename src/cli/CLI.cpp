@@ -300,7 +300,7 @@ void CLI::cmdHome(int argc, char** argv) {
         if (_motion.startHoming(axis)) {
             printf("started (poll 'status' to monitor)\r\n");
         } else {
-            printf("FAILED — check UART connection\r\n");
+            printf("FAILED — no homing support on this axis (A4988) or UART error\r\n");
         }
     };
 
@@ -565,7 +565,7 @@ void CLI::cmdCal(int argc, char** argv) {
         if (_motion.calibrateEncoder(axis)) {
             printf("%s calibration complete\r\n", name);
         } else {
-            printf("%s calibration FAILED — check UART connection\r\n", name);
+            printf("%s calibration FAILED — not supported on this axis (A4988) or UART error\r\n", name);
         }
     };
     if (strcmp(target, "all") == 0) {
