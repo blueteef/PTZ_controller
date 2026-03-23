@@ -375,9 +375,18 @@ void MotionController::pollHoming(AxisId axis) {
         _homingSoftware[idx]   = true;
         _homingPrevAngle[idx]  = -1.0f;
         _homingStartMs[idx]    = millis();   // reset timer for software phase
+#ifdef PTZ_DRIVE_STEPPER
+        if (_stepper[idx]) {
+            uint32_t speedHz = (uint32_t)(HOMING_SW_SPEED_DEG_S * stepsPerDeg(axis));
+            _stepper[idx]->setSpeedInHz(speedHz);
+            _stepper[idx]->applySpeedAcceleration();
+            _stepper[idx]->runForward();    // CW — adjust if axis homes CCW
+        }
+#else
         uint8_t spd    = degSToSpeedByte(axis, HOMING_SW_SPEED_DEG_S);
         uint8_t spdDir = spd | 0x00;        // CW — adjust if axis homes CCW
         _driver[idx]->runVelocity(spdDir);
+#endif
     }
 }
 

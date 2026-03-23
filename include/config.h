@@ -11,16 +11,16 @@
 #define LASER_PIN        13   // FET driver gate — HIGH = laser on
 
 // Pan axis
-#define PAN_STEP_PIN      25
-#define PAN_DIR_PIN       26
-#define PAN_EN_PIN        27
+#define PAN_STEP_PIN      32
+#define PAN_DIR_PIN       33
+#define PAN_EN_PIN        25
 #define PAN_UART_TX_PIN   17   // Serial2 TX → MKS Rx
 #define PAN_UART_RX_PIN   16   // Serial2 RX ← MKS Tx
 
 // Tilt axis
-#define TILT_STEP_PIN     32
-#define TILT_DIR_PIN      33
-#define TILT_EN_PIN       19
+#define TILT_STEP_PIN     26
+#define TILT_DIR_PIN      27
+#define TILT_EN_PIN       14
 #define TILT_UART_TX_PIN   4   // Serial1 TX → MKS Rx
 #define TILT_UART_RX_PIN   5   // Serial1 RX ← MKS Tx
 
