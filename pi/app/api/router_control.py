@@ -113,9 +113,16 @@ async def _handle_message(ws: WebSocket, raw: str) -> None:
 
     elif t == "stop":
         axis = msg.get("axis", "all")
+        # Zero velocity first — MKS CR_UART mode keeps last velocity otherwise
+        if axis in ("pan", "all"):
+            bridge.send_urgent(protocol.cmd_vel("pan", 0.0))
+        if axis in ("tilt", "all"):
+            bridge.send_urgent(protocol.cmd_vel("tilt", 0.0))
         bridge.send_urgent(protocol.cmd_stop(axis))
 
     elif t == "estop":
+        bridge.send_urgent(protocol.cmd_vel("pan",  0.0))
+        bridge.send_urgent(protocol.cmd_vel("tilt", 0.0))
         bridge.send_urgent(protocol.cmd_estop())
 
     elif t == "home":
