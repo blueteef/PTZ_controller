@@ -30,13 +30,13 @@ bool MotionController::begin() {
 
     _stepper[0] = _engine.stepperConnectToPin(PAN_STEP_PIN);
     if (!_stepper[0]) return false;
-    _stepper[0]->setDirectionPin(PAN_DIR_PIN);
+    _stepper[0]->setDirectionPin(PAN_DIR_PIN,  PAN_DIR_INVERT);
     _stepper[0]->setEnablePin(PAN_EN_PIN, true);
     _stepper[0]->setAutoEnable(false);
 
     _stepper[1] = _engine.stepperConnectToPin(TILT_STEP_PIN);
     if (!_stepper[1]) return false;
-    _stepper[1]->setDirectionPin(TILT_DIR_PIN);
+    _stepper[1]->setDirectionPin(TILT_DIR_PIN, TILT_DIR_INVERT);
     _stepper[1]->setEnablePin(TILT_EN_PIN, true);
     _stepper[1]->setAutoEnable(false);
 #endif

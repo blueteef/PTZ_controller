@@ -29,6 +29,11 @@
 //   OC variant:       COM is the optocoupler supply — connect to ESP32 3.3V.
 // Serial communication uses the separate 4-pin UART header (Tx, Rx, G, 3V3).
 
+// Stepper direction invert — set true if axis moves the wrong way.
+// Flips the DIR pin logic in FastAccelStepper without rewiring.
+#define PAN_DIR_INVERT    false
+#define TILT_DIR_INVERT   false
+
 // UART0 (Serial) = USB CLI (default Arduino Serial)
 
 // -----------------------------------------------------------------------------

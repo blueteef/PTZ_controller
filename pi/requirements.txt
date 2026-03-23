@@ -10,4 +10,5 @@ numpy==1.26.4
 Pillow==10.4.0
 pydantic==2.8.2
 aiofiles==24.1.0
+python-dotenv==1.0.1
 anthropic==0.40.0

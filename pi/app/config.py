@@ -8,6 +8,13 @@ Load order: defaults below → .env file → environment.
 import os
 from pathlib import Path
 
+# Load .env file if present (must happen before any os.getenv calls)
+try:
+    from dotenv import load_dotenv
+    load_dotenv(Path(__file__).parent.parent / ".env")
+except ImportError:
+    pass
+
 # ---------------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------------
