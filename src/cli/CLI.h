@@ -60,6 +60,7 @@ private:
     void cmdSave    (int argc, char** argv);
     void cmdReset   (int argc, char** argv);
     void cmdReboot  (int argc, char** argv);
+    void cmdVel     (int argc, char** argv);
     void cmdDiag    (int argc, char** argv);
 
     // ── Helpers ─────────────────────────────────────────────────────────────

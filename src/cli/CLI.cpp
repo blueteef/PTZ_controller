@@ -137,6 +137,7 @@ void CLI::dispatch(char* line) {
     else if (strcmp(cmd, "save")    == 0) cmdSave   (argc, argv);
     else if (strcmp(cmd, "reset")   == 0) cmdReset  (argc, argv);
     else if (strcmp(cmd, "reboot")  == 0) cmdReboot (argc, argv);
+    else if (strcmp(cmd, "vel")     == 0) cmdVel    (argc, argv);
     else if (strcmp(cmd, "diag")    == 0) cmdDiag   (argc, argv);
     else {
         printf("Unknown command: '%s'  (type 'help' for a list)\r\n", cmd);
@@ -218,6 +219,8 @@ void CLI::cmdHelp(int argc, char** argv) {
         "  home    [pan|tilt|all]    Home axis using hall-effect sensor\r\n"
         "  move    <pan|tilt> <deg> [--relative]\r\n"
         "                            Move axis to position\r\n"
+        "  vel     <pan|tilt|all> <deg/s>\r\n"
+        "                            Set continuous velocity (Pi/remote control)\r\n"
         "  stop    [pan|tilt|all]    Decelerate and stop\r\n"
         "  estop                     Immediate hard stop (clears e-stop flag)\r\n"
         "\r\n"
@@ -337,6 +340,40 @@ void CLI::cmdMove(int argc, char** argv) {
     _motion.moveTo(axis, deg, relative);
     printf("Moving %s to %.2f ° (%s)\r\n",
            argv[1], deg, relative ? "relative" : "absolute");
+}
+
+// -----------------------------------------------------------------------------
+// vel  — continuous velocity command (primary interface for Pi/remote control)
+// Usage: vel <pan|tilt|all> <deg_s>
+//   Positive deg_s = CW/up, negative = CCW/down.
+//   Send "stop all" or "vel all 0" to halt.
+//   Called at ~20-50 Hz by the Pi tracking loop; no response is printed so
+//   the serial bridge does not need to wait for a reply.
+// -----------------------------------------------------------------------------
+
+void CLI::cmdVel(int argc, char** argv) {
+    if (argc < 3) {
+        print("Usage: vel <pan|tilt|all> <deg/s>\r\n");
+        return;
+    }
+    float degS;
+    if (!parseFloat(argv[2], degS)) {
+        printf("Invalid speed '%s'\r\n", argv[2]);
+        return;
+    }
+    const char* target = argv[1];
+    if (strcmp(target, "all") == 0) {
+        _motion.setVelocity(AxisId::PAN,  degS);
+        _motion.setVelocity(AxisId::TILT, degS);
+    } else {
+        AxisId axis;
+        if (!parseAxis(target, axis)) {
+            printf("Unknown axis '%s'\r\n", target);
+            return;
+        }
+        _motion.setVelocity(axis, degS);
+    }
+    // No response printed — keeps serial clean for high-rate callers.
 }
 
 // -----------------------------------------------------------------------------

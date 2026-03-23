@@ -1,0 +1,12 @@
+# Force LF line endings in the repo for all text files.
+# Windows checkout converts to CRLF locally; Pi clones get LF.
+* text=auto eol=lf
+
+# Shell scripts must always be LF — CRLF breaks bash on Linux
+*.sh text eol=lf
+
+# Binary files — no conversion
+*.pt binary
+*.onnx binary
+*.db binary
+*.bin binary

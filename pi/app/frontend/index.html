@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PTZ Controller</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div id="root">
+    <!-- ── Header ──────────────────────────────────────────── -->
+    <header>
+      <span id="title">PTZ Controller</span>
+      <span id="status-bar">
+        <span id="serial-badge" class="badge bad">ESP32 ✗</span>
+        <span id="tracking-badge" class="badge off">Tracking OFF</span>
+        <span id="pos-display">pan —°  tilt —°</span>
+      </span>
+    </header>
+
+    <!-- ── Main layout ─────────────────────────────────────── -->
+    <div id="layout">
+
+      <!-- Video panel -->
+      <div id="video-panel">
+        <div id="video-wrap">
+          <img id="feed" src="/stream" alt="camera feed">
+          <canvas id="overlay"></canvas>
+        </div>
+        <!-- Detection mode selector -->
+        <div id="mode-bar">
+          <label>Detection:</label>
+          <select id="det-mode">
+            <option value="none">Off</option>
+            <option value="face">Faces</option>
+            <option value="yolo">Objects (YOLO)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Control sidebar -->
+      <aside id="sidebar">
+
+        <!-- Virtual joystick -->
+        <section>
+          <h3>Joystick</h3>
+          <canvas id="joystick" width="160" height="160"></canvas>
+          <p class="hint">Drag or use WASD keys</p>
+        </section>
+
+        <!-- Buttons -->
+        <section>
+          <h3>Commands</h3>
+          <button id="btn-stop"  class="btn warn">Stop</button>
+          <button id="btn-home"  class="btn">Home All</button>
+          <button id="btn-estop" class="btn danger">E-STOP</button>
+        </section>
+
+        <!-- Tracking -->
+        <section>
+          <h3>Tracking</h3>
+          <p class="hint">Click a detection box on the video to lock on.</p>
+          <button id="btn-track-stop" class="btn warn" disabled>Stop Tracking</button>
+        </section>
+
+        <!-- Speed -->
+        <section>
+          <h3>Speed <span id="speed-val">—</span> °/s</h3>
+          <input id="speed-slider" type="range" min="5" max="180" value="180">
+        </section>
+
+      </aside>
+    </div>
+  </div>
+
+  <script src="/js/app.js"      type="module"></script>
+</body>
+</html>

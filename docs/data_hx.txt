@@ -20,24 +20,99 @@ Constants:
 2. Gear Ratios -  pan axis has a gear ratio of 144:17 and the tilt has a ratio of 64:21
 3.
 
----
+
+
+---PHASE 2 Application Goals---
+
+1. Addition of a raspberry pi 4 with an IR pI camera (ribbon cable version) to the end effector of the gimbal
+2. extensible web application (or native) for viewing camera feed in real time with an actual usable framerate. 
+3. control of the gimbal through the application while viewing video feed. 
+4. maintain segregation of the esp32/pi keeping gimbal control and communication with stepper drivers on the esp as lon as...
+   - lag isnt too noticable
+   - overhead communication isnt obscene
+   - there is not an obvious better path forward using the pi as the all in one controll module
+   - communication protocol between pi and esp is not buggy
+5. Implementation of simple object detection via the camera
+6. implement a simple API to track an certain object via direct selection of that object or
+   - proramatic detection and tracking of objects
+   - face detection and tracking
+
+Wish-list 
+   - Maintain ability to control via xbox controller if feasable via selection on the application
+   - easy graphical interface for all controls, settings, param changes via application
+   - Claude Integration for object detection/face detection of local people that have been willfully saved into local database
+   - Keep as much of the work local, only using APIs when necessary to cut down on token use, and network reliance.
+
+---End PHASE2 Goals---
 
 ## Session History & Continuation Guide
-*Updated: 2026-03-18*
+*Updated: 2026-03-22 (session 3)*
+
+---
+
+### Current Hardware Status (as of 2026-03-22)
+
+- **ESP32:** Firmware written and compiling. NOT YET flashed/tested on real hardware.
+- **Pi 4:** Physical unit in hand. Running Raspberry Pi OS Bookworm 64-bit Lite, headless.
+  - Hostname: `CIWS` (ssh pi@CIWS.local)
+  - Camera: **IMX219** (Pi Camera Module 2 / NoIR v2) — confirmed detected via libcamera
+  - `setup.sh` was run — apt packages installed, pip install IN PROGRESS (slow WiFi/PyPI)
+  - `python3-dlib` removed from setup.sh (not in Bookworm apt repos — install via pip later for face recognition phase)
+- **Gimbal mechanics:** Not yet assembled with Pi on end effector. Camera ribbon routing TBD.
+
+---
 
 ### What Has Been Built
 
-**Hardware target:** ESP32 WROOM-32 + 2× MKS Servo42C (CR_UART mode) + Xbox One S via Bluepad32 Bluetooth.
-
-**Firmware stack (PlatformIO / Arduino-ESP32):**
+**ESP32 Firmware (PlatformIO / Arduino-ESP32) — written, needs flash + hardware test:**
 - `src/drivers/MKSServo42C.h/.cpp` — full UART driver class (motion, read-back, homing, raw diag)
 - `src/motion/MotionController.h/.cpp` — axis abstraction, velocity control, soft limits, homing state machine, NVS settings persistence
 - `src/input/GamepadInput.h/.cpp` — Bluepad32 Xbox One S integration
-- `src/cli/CLI.h/.cpp` — GNU-style serial CLI (help, move, stop, home, ping, diag, reset, save, estop, status, set ...)
+- `src/cli/CLI.h/.cpp` — GNU-style serial CLI (help, move, stop, home, ping, diag, reset, save, estop, status, set, **vel**)
 - `include/config.h` — all pin assignments, gear ratios, motion defaults, task priorities
 - `scripts/mks_setup.py` — standalone Python UART tool for direct driver config via FTDI
 
-**Current gamepad mapping:**
+**NEW in session 3 — `vel` CLI command added to ESP32:**
+- `vel <pan|tilt|all> <deg_s>` — continuous velocity command, no response printed
+- This is the primary interface for Pi tracking loop (sent at ~20-50Hz)
+- Needs to be flashed to ESP32 before Pi serial bridge will work correctly
+
+**Pi Application (`pi/` directory) — written, pip install in progress:**
+
+| File/Dir | Status | What it does |
+|---|---|---|
+| `app/config.py` | ✅ written | All constants. Camera FoV set for IMX219: 47°H × 28°V |
+| `app/state.py` | ✅ written | Thread-safe shared state (frames, detections, position) |
+| `app/serial_bridge/protocol.py` | ✅ written | Command builders + response parsers for ESP32 CLI |
+| `app/serial_bridge/bridge.py` | ✅ written | Priority-queue serial writer, auto-reconnect, position poller |
+| `app/camera/capture.py` | ✅ written | picamera2 background thread, stubs on non-Pi |
+| `app/camera/stream.py` | ✅ written | MJPEG async generator for HTTP stream |
+| `app/vision/pipeline.py` | ✅ written | Vision thread, swappable detectors |
+| `app/vision/detector_null.py` | ✅ written | Pass-through (no detection) |
+| `app/vision/detector_face.py` | ✅ written | MediaPipe face detection |
+| `app/vision/detector_yolo.py` | ✅ written | YOLOv8-nano object detection |
+| `app/vision/tracker.py` | ✅ written | PID tracking controller → vel commands to ESP32 |
+| `app/api/router_stream.py` | ✅ written | GET /stream — MJPEG StreamingResponse |
+| `app/api/router_control.py` | ✅ written | WS /ws/control — bidirectional gimbal control + telemetry |
+| `app/api/router_detection.py` | ✅ written | POST/GET /api/detection — mode switching |
+| `app/api/router_settings.py` | ✅ written | GET/PUT /api/settings — motion params |
+| `app/main.py` | ✅ written | FastAPI app factory, lifespan, mounts all routers |
+| `app/frontend/index.html` | ✅ written | Dark UI: video feed, virtual joystick, detection overlay |
+| `app/frontend/style.css` | ✅ written | Dark theme styles |
+| `app/frontend/js/app.js` | ✅ written | WS connection, telemetry handler, button wiring |
+| `app/frontend/js/controls.js` | ✅ written | Virtual joystick + WASD keyboard → velocity commands |
+| `app/frontend/js/detection_overlay.js` | ✅ written | Canvas overlay, click-to-track |
+| `app/db/` | ❌ not yet | SQLite face database (Phase 2f) |
+| `app/vision/recognizer.py` | ❌ not yet | Face recognition (Phase 2f) |
+| `app/api/router_faces.py` | ❌ not yet | Face enrollment REST API (Phase 2f) |
+| `app/api/router_claude.py` | ❌ not yet | Claude NL integration (Phase 2g, optional) |
+| `tests/test_protocol.py` | ✅ written | Unit tests for protocol module (run on any machine) |
+| `tests/test_tracker.py` | ✅ written | Unit tests for tracker PID math |
+| `setup.sh` | ✅ written | Pi provisioning script |
+| `scripts/test_serial.py` | ✅ written | Serial smoke test (run on Pi with ESP32 connected) |
+| `scripts/download_models.sh` | ✅ written | Downloads YOLOv8-nano weights to models/ |
+
+**Current gamepad mapping (Xbox One S via Bluepad32):**
 - Left stick → pan/tilt velocity
 - Right bumper (RB) → fine-speed mode (15% scale)
 - Left bumper (LB) → latch laser on/off
@@ -49,44 +124,263 @@ Constants:
 - Y → home both axes
 - Menu → toggle soft limits
 
-**Laser:** GPIO 13 → FET driver gate. Latch = steady on. Trigger = 25 Hz strobe (toggles every 20 ms task frame).
+**Laser:** GPIO 13 → FET driver gate. Latch = steady on. Trigger = 25 Hz strobe.
 
 **Motion defaults (config.h):**
-- Max speed: 180 deg/s at output shaft
-- Accel: 30 deg/s²
-- Fine speed scale: 0.15×
-- Soft limits: DISABLED (re-enable after homing is configured)
-- Pan limits: ±180°, Tilt limits: −45° to +90°
+- Max speed: 180 deg/s, Accel: 30 deg/s², Fine scale: 0.15×
+- Soft limits: DISABLED (re-enable after homing configured)
+- Pan: ±180°, Tilt: −45° to +90°
 
-**NVS namespace:** `ptz_cfg` — persists across flashes. After changing config.h defaults, run `reset` then `save` from CLI.
+**NVS namespace:** `ptz_cfg` — survives flashes. After changing config.h defaults: flash → `reset` → `save` in CLI.
 
 ---
 
-### What Still Needs Doing
+### What Still Needs Doing (in order)
 
-1. **MKS driver display config** — V3.6.1 CR_UART firmware blocks config commands via UART. Must configure these via physical OLED on each driver:
-   - Work mode: CR_UART
-   - Current, direction, microsteps (16)
-   - ACC (menu item 18) — enable to get smooth ramps
-   - 0_Mode = DirMode, 0_Speed = 2, 0_Dir = CW, then `Set 0` at desired home position
+**Immediate — Pi setup finishing:**
+1. Wait for `pip install -r requirements.txt` to complete on Pi (was running, slow WiFi)
+   - If it fails: `source venv/bin/activate && pip install -r requirements.txt --retries 10 --timeout 60`
+2. Run `python3 scripts/test_serial.py` with ESP32 plugged in via USB to Pi
+3. Run `bash scripts/download_models.sh` to pull YOLOv8-nano weights
+4. Launch server: `cd ~/PTZ_controller/pi && source venv/bin/activate && uvicorn app.main:app --host 0.0.0.0 --port 8000`
+5. Open browser to `http://CIWS.local:8000` — verify video stream appears
 
-2. **Homing** — zero-mode must be set via display first (above). After that, `home all` CLI command or Y button should work. See `docs/MKS_Servo42C_Knowledge_Base.md`.
+**ESP32 — still needs hardware testing:**
+1. **MKS driver display config** — V3.6.1 CR_UART firmware blocks config via UART. Configure via physical OLED:
+   - Work mode: CR_UART, microsteps: 16, ACC menu item 18: enabled
+   - 0_Mode = DirMode, 0_Speed = 2, 0_Dir = CW, then `Set 0` at home position
+2. **Flash updated firmware** (includes new `vel` command) and test with `ping all`
+3. **32-byte pan response drain** — pan driver returns 32 bytes to 0x3A query; fix uart drain loop in MKSServo42C.cpp
+4. **Soft limits** — enable in config.h once homing works
+5. **Homing** — requires display config first; then `home all` CLI or Y button
 
-3. **32-byte pan response drain** — pan driver (V3.6.1) returns 32 bytes to 0x3A status query; leftover bytes may corrupt next read. Fix: add uart drain loop after each `doCommand` transaction.
+**Phase 2f (face recognition) — not started:**
+- Requires dlib (compiles from source on Pi, ~30-60 min): `pip install dlib face-recognition`
+- Then build: `app/db/database.py`, `app/db/face_store.py`, `app/vision/recognizer.py`, `app/api/router_faces.py`
+- Add enrollment UI to frontend
 
-4. **Soft limits** — set `SOFT_LIMITS_ENABLED true` in config.h once homing is operational so the controller knows the axis reference.
-
-5. **Right trigger** — currently unassigned. Was formerly laser fire; reassigned to left trigger. Could be used for a second output or speed preset.
+**Phase 2g (optional polish):**
+- Xbox controller via Browser Gamepad API (`app/frontend/js/gamepad.js`) — needs HTTPS
+- Claude integration (`app/api/router_claude.py`) — set `ANTHROPIC_API_KEY` in `pi/.env`
 
 ---
 
 ### How to Pick This Up Quickly
 
+**If continuing Pi work:**
+1. SSH to Pi: `ssh pi@CIWS.local`
+2. `cd ~/PTZ_controller/pi && source venv/bin/activate`
+3. `python3 scripts/test_serial.py` — verify ESP32 serial first
+4. `uvicorn app.main:app --host 0.0.0.0 --port 8000` — launch server
+5. All Pi app constants are in `app/config.py` — camera FoV, serial port, PID gains
+
+**If continuing ESP32 work:**
 1. Open project in VSCode with PlatformIO extension
-2. Read `include/config.h` — all pins and defaults are there
-3. Read `docs/MKS_Servo42C_Knowledge_Base.md` — everything known about the drivers
-4. Flash firmware, open serial monitor at 115200, type `help` for full CLI reference
-5. Use `ping all` to verify UART to both drivers
-6. Use `diag pan 3a` / `diag tilt 3a` to see raw driver responses
-7. Use `scripts/mks_setup.py` with an FTDI adapter to configure drivers directly if needed
-8. After any config.h default change: flash → `reset` → `save` in CLI
+2. `include/config.h` — all pins and defaults
+3. Flash, open serial monitor at 115200, type `help`
+4. `ping all` → verify UART to both drivers
+5. `diag pan 3a` / `diag tilt 3a` → raw driver responses
+6. After config.h change: flash → `reset` → `save`
+
+**Key Pi ↔ ESP32 serial protocol facts:**
+- Port: `/dev/ttyUSB0`, 115200 baud
+- ESP32 echoes every character + prints `ptz> ` prompt — Pi bridge discards this
+- Motion: `vel pan 30.0\n` (no response), `stop all\n`, `estop\n`
+- Query: `get position\n` → `pan  : X.XXX °\ntilt : X.XXX °\n`
+- bridge.py uses priority queue: estop=0 (never dropped), velocity=1, queries=2
+
+**Camera facts:**
+- Sensor: IMX219 (Pi Camera Module 2 / NoIR v2)
+- FoV at 1280×720: ~47°H × 28°V (set in config.py — tune empirically if tracking drifts)
+- libcamera confirmed working on this Pi. `camera_auto_detect=1` in /boot/firmware/config.txt
+- `python3-dlib` is NOT in Bookworm apt — install via pip when face recognition is needed
+
+---
+
+## PHASE 2 — Feasibility Analysis & Implementation Roadmap
+*Evaluated: 2026-03-22*
+
+### Verdict: All goals are feasible. Recommended approach below.
+
+---
+
+### Architecture Overview
+
+```
+[Raspberry Pi 4]  ← end effector, moves with gimbal
+├── libcamera  →  camera capture (NoIR ribbon cable camera)
+├── Web server (FastAPI + WebSockets)
+│   ├── /stream         — MJPEG (or WebRTC) video feed
+│   ├── /ws/control     — WebSocket: browser → Pi → ESP32 motion commands
+│   └── /api/...        — REST: settings, detection mode, face enrollment
+├── Vision pipeline (OpenCV / MediaPipe / YOLO)
+│   ├── Face detection + recognition (local, offline)
+│   ├── General object detection (YOLOv8-nano)
+│   └── Tracking PID → pan/tilt velocity deltas
+└── ESP32 bridge (pyserial over USB-UART, /dev/ttyUSB0)
+    └── Wraps existing CLI protocol → no ESP32 firmware changes needed initially
+
+[ESP32]  ← existing firmware, unchanged for Phase 2 start
+└── Receives CLI commands from Pi over USB serial
+    (e.g. "set vel pan 30.0\n")
+```
+
+---
+
+### Goal-by-Goal Breakdown
+
+**Goal 1 — RPi 4 + IR Camera on end effector**
+- Camera in use: IMX219 (Pi Camera Module 2 / NoIR v2) — already confirmed working on this Pi
+- FEASIBLE. Main challenges are mechanical: routing the ribbon and power cable
+  through the moving gimbal. Options:
+  - Slip ring (cleanest, adds complexity/cost)
+  - Loose ribbon with strain relief and enough slack for range of motion (simplest)
+- Power: 5V/3A to Pi via gimbal wiring. Pi 4 peaks ~3A under load with camera.
+
+**Goal 2 — Real-time video web app**
+- FEASIBLE. Best local approach for usable framerates:
+  - Start: MJPEG stream via libcamera-apps or OpenCV → simple HTTP server
+    - 720p @ 20-30fps is very achievable on Pi 4 on a local network
+    - ~100-200ms latency, acceptable for manual PTZ control
+  - Upgrade path: mediamtx (formerly rtsp-simple-server) → WebRTC in browser
+    - Sub-100ms latency, better for tracking feedback
+- Recommended start: MJPEG (simple), migrate to WebRTC only if latency is a problem
+
+**Goal 3 — Gimbal control through the web app**
+- FEASIBLE. WebSocket in the browser → FastAPI WS endpoint on Pi →
+  pyserial → ESP32 CLI. The existing `set vel pan <n>` and `stop` CLI commands
+  are all that's needed. No new ESP32 firmware required to start.
+- Control latency (Pi→ESP32 over USB serial): <5ms. Network latency (browser→Pi
+  on local WiFi): ~5-20ms. Total loop is well under perceptible lag.
+
+**Goal 4 — Maintain ESP32/Pi segregation**
+- RECOMMENDED. ESP32 continues to own real-time motion control and driver UART.
+  Pi owns vision, web serving, and user interface. Communication via USB serial.
+- The existing CLI protocol is sufficient. If a tighter binary protocol is ever
+  needed (e.g., for <1ms command latency or bidirectional telemetry streaming),
+  it can be added as a new ESP32 UART environment without breaking existing CLI.
+- Red flags to watch: if pyserial drops frames at high control rates, or if
+  USB serial adds jitter during tracking. Both are unlikely at ≤50Hz command rate.
+
+**Goal 5 — Simple object detection**
+- FEASIBLE on Pi 4.
+  - Face detection: OpenCV Haar cascades or MediaPipe Face Detection
+    - Haar: ~30fps at 640x480 on Pi 4
+    - MediaPipe: ~25fps, more accurate
+  - General objects: YOLOv8-nano (Ultralytics, INT8 quantized)
+    - ~10-15fps at 640x480 on Pi 4 CPU (no GPU)
+    - Sufficient for tracking slow/medium-speed subjects
+  - Faster option if needed: Hailo-8L M.2 HAT+ for Pi 5 (not Pi 4 compatible)
+    or Coral USB Accelerator (works on Pi 4, adds ~30fps headroom)
+
+**Goal 6 — Object tracking API**
+- FEASIBLE. Implementation path:
+  1. Detect object/face centroid in frame (pixel x,y)
+  2. Compute angular error: (centroid - frame_center) → pan/tilt delta in degrees
+     using camera FoV (IMX219 at 1280×720: ~47°H × 28°V — confirmed sensor, set in config.py)
+  3. PID controller on the error → velocity command to ESP32
+  4. Clamp velocity to motion limits
+- Face recognition with local database:
+  - `face_recognition` Python library (dlib-based, offline, runs on Pi 4)
+  - Enrollment: capture N frames per person, compute face encodings, store in SQLite
+  - Recognition: compare live encodings to DB, threshold match → identity label
+  - No API calls needed for recognition itself; this is fully local
+
+---
+
+### Wishlist Feasibility
+
+**Xbox controller via app** — Feasible. Browser Gamepad API can read the controller
+  and send inputs over WebSocket to the Pi. Requires HTTPS or localhost for Gamepad
+  API to work in Chrome. Alternatively, connect controller to Pi via Bluetooth and
+  read it in Python (pygame, evdev).
+
+**Graphical settings/control interface** — Standard web frontend work (React/Vue or
+  plain HTML). FastAPI serves the page and REST endpoints. Nothing exotic.
+
+**Claude integration for local face recognition** — The face_recognition library
+  handles the offline recognition. Claude API (claude-haiku-4-5 for cost) is useful
+  for higher-level tasks: describing a scene, answering questions about detected
+  people, or natural language command parsing ("track the person in the red shirt").
+  Keep recognition local, use Claude only for understanding/reasoning layers.
+  Use claude-haiku-4-5-20251001 as the model for lowest latency/cost.
+
+**Keep processing local** — Achievable. All detection and tracking runs on Pi.
+  Claude API is the only optional network dependency and can be feature-flagged off.
+
+---
+
+### Recommended Implementation Order
+
+**Phase 2a — Hardware & Connectivity**
+- [ ] Mount Pi 4 on end effector with appropriate cable routing
+- [ ] Camera module connected, test `libcamera-hello` locally
+- [ ] Pi powered from gimbal wiring, boots headless, accessible via SSH on WiFi
+- [ ] Pi connected to ESP32 via USB, verify `ping all` works from Pi's pyserial
+
+**Phase 2b — Video Streaming**
+- [ ] Minimal FastAPI server on Pi streams MJPEG from camera
+- [ ] Browser opens stream, confirms real-time video at target framerate
+- [ ] Basic HTML page with video element
+
+**Phase 2c — Web Control**
+- [ ] WebSocket endpoint on Pi bridges to ESP32 CLI via pyserial
+- [ ] Browser joystick/button UI sends velocity commands (pan/tilt)
+- [ ] Test: control gimbal while watching live video in browser
+- [ ] Add stop, home, and e-stop buttons
+
+**Phase 2d — Object Detection**
+- [ ] Integrate MediaPipe face detection into video pipeline
+- [ ] Overlay bounding boxes on stream
+- [ ] Add YOLOv8-nano for general object detection (toggle between modes)
+
+**Phase 2e — Tracking**
+- [ ] Implement tracking PID (start with proportional-only, tune from there)
+- [ ] Click-to-track: user clicks face/object in stream, system locks on
+- [ ] Automatic face tracking mode: follow first detected face
+- [ ] Add lock-on indicator in UI
+
+**Phase 2f — Face Recognition**
+- [ ] Enroll faces via UI (capture, label, store encoding in SQLite)
+- [ ] Live recognition overlay on stream
+- [ ] "Track [name]" mode: automatically follow a specific enrolled person
+
+**Phase 2g — Optional / Polish**
+- [ ] Xbox controller via Browser Gamepad API
+- [ ] Settings page in UI (motion limits, speed, detection thresholds)
+- [ ] Claude integration for scene description / natural language commands
+
+---
+
+### Key Risks
+
+1. **Ribbon cable mechanical failure** — The FPC ribbon is fragile over repeated
+   flexing. Use a CSI extension cable designed for flex, or a slip ring.
+2. **Pi power over moving gimbal wiring** — Voltage drop across long/thin wires;
+   use 18AWG minimum, add local 5V regulator on Pi side if needed.
+3. **Tracking latency loop** — Detection → PID → serial → driver → motion adds
+   ~100-300ms. This limits tracking speed. Start with slow subjects; tune PID tight.
+4. **libcamera API changes** — Pi camera stack has changed frequently. Pin the OS
+   version (Raspberry Pi OS Bookworm, 2024-11-19 or later) and test before building
+   the vision pipeline on top.
+5. **USB serial reliability** — Pi USB can reset on power fluctuation. Use a powered
+   USB hub or add a TVS diode on VBUS. Implement reconnect logic in the pyserial bridge.
+
+---
+
+### Technology Stack Summary
+
+| Layer              | Technology                              |
+|--------------------|------------------------------------------|
+| OS                 | Raspberry Pi OS Bookworm (64-bit, lite) |
+| Camera capture     | libcamera / picamera2                   |
+| Video stream       | MJPEG (start) → mediamtx/WebRTC (later)|
+| Web server         | FastAPI + uvicorn                        |
+| ESP32 bridge       | pyserial                                 |
+| Face detection     | MediaPipe or OpenCV Haar                 |
+| Object detection   | YOLOv8-nano (Ultralytics)               |
+| Face recognition   | face_recognition (dlib, offline)         |
+| Face DB            | SQLite                                   |
+| Frontend           | Plain HTML/JS or lightweight React       |
+| Claude integration | claude-haiku-4-5-20251001 (optional)    |
+
