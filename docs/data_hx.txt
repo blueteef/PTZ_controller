@@ -46,19 +46,112 @@ Wish-list
 ---End PHASE2 Goals---
 
 ## Session History & Continuation Guide
-*Updated: 2026-03-22 (session 3)*
+*Updated: 2026-03-22 (session 3 — end of day)*
 
 ---
 
-### Current Hardware Status (as of 2026-03-22)
+### PICK UP HERE TOMORROW
 
-- **ESP32:** Firmware written and compiling. NOT YET flashed/tested on real hardware.
-- **Pi 4:** Physical unit in hand. Running Raspberry Pi OS Bookworm 64-bit Lite, headless.
+**The immediate next task is switching from UART drive mode to Step/Dir/EN (stepper) mode.**
+This is the decision we landed on at end of session because UART velocity control is unreliable
+for real-time stop/start from the web UI (MKS driver holds last velocity indefinitely).
+
+**Stepper mode is already fully implemented in the firmware** — just needs the MKS driver
+reconfigured and the Step/Dir/EN pins wired up. Three steps:
+
+1. **On each MKS driver OLED:** Change Work Mode → `CR_vFOC` (was `CR_UART`). Leave all else the same.
+
+2. **Wire 3 extra pins per driver** (UART wires stay connected for homing/encoder):
+   | Driver | STEP pin | DIR pin | EN pin |
+   |--------|----------|---------|--------|
+   | Pan    | GPIO 25  | GPIO 26 | GPIO 27 |
+   | Tilt   | GPIO 32  | GPIO 33 | GPIO 19 |
+
+3. **In PlatformIO:** select environment `esp32dev_stepper` (bottom bar in VS Code) and Upload.
+
+4. **Test via serial monitor** at 115200:
+   - `vel pan 30` → should move
+   - `stop all` → should stop instantly
+   - If direction wrong: flip `PAN_DIR_INVERT` or `TILT_DIR_INVERT` in `include/config.h` and reflash
+
+5. **On Pi:** `git pull`, install python-dotenv (`pip install python-dotenv`), restart server.
+   Then set inversion in `pi/.env` if needed:
+   ```
+   PAN_INVERT=true
+   TILT_INVERT=true
+   ```
+
+---
+
+### Current Hardware Status (as of 2026-03-22 end of session)
+
+- **ESP32:** Firmware written and on GitHub. **Partially tested** — was running in CR_UART mode.
+  - UART mode had unreliable stop behavior (MKS holds last velocity) — switching to stepper mode.
+  - `vel` CLI command added this session and flashed (user confirmed).
+  - `PAN_DIR_INVERT` / `TILT_DIR_INVERT` flags added to config.h for easy direction fix.
+  - **Next flash must use `env:esp32dev_stepper`** after changing MKS work mode to CR_vFOC.
+
+- **Pi 4:** Running, server working, video streaming confirmed in browser.
   - Hostname: `CIWS` (ssh pi@CIWS.local)
-  - Camera: **IMX219** (Pi Camera Module 2 / NoIR v2) — confirmed detected via libcamera
-  - `setup.sh` was run — apt packages installed, pip install IN PROGRESS (slow WiFi/PyPI)
-  - `python3-dlib` removed from setup.sh (not in Bookworm apt repos — install via pip later for face recognition phase)
+  - Camera: **IMX219** (Pi Camera Module 2 / NoIR v2) — confirmed working
+  - Camera rotation: `CAMERA_ROTATION=2` in config.py (camera is physically inverted — 180°)
+  - `python-dotenv` added to requirements.txt — run `pip install python-dotenv` on Pi after `git pull`
+  - `.env` file does NOT exist on the Pi yet — create it at `~/PTZ_controller/pi/.env`
+  - Git is installed and repo is cloned at `~/PTZ_controller`
+  - Server launch: `cd ~/PTZ_controller/pi && source venv/bin/activate && uvicorn app.main:app --host 0.0.0.0 --port 8000`
+
+- **Web UI:** Working. Video streams. Controls partially working but:
+  - Stop on release was broken in UART mode — will be fixed by stepper mode switch
+  - Joystick now has squared response curve (feels better at low speed)
+  - Default speed lowered to 45°/s (was 180°/s)
+  - Axis inversion via `.env` file (PAN_INVERT / TILT_INVERT) — `.env` now actually loads via dotenv
+
 - **Gimbal mechanics:** Not yet assembled with Pi on end effector. Camera ribbon routing TBD.
+
+- **YOLO/ultralytics:** `Illegal instruction` crash on Pi 4 — torch build incompatible with ARM Cortex-A72.
+  Skip for now. Face detection (MediaPipe) works fine and is the primary tracking use case.
+
+---
+
+### What Has Been Built
+
+**ESP32 Firmware — all written, on GitHub, stepper mode ready to flash:**
+- `src/drivers/MKSServo42C.h/.cpp` — UART driver (motion, read-back, homing, raw diag)
+- `src/motion/MotionController.h/.cpp` — dual-mode (UART + stepper), velocity, homing, NVS
+- `src/input/GamepadInput.h/.cpp` — Bluepad32 Xbox One S
+- `src/cli/CLI.h/.cpp` — GNU CLI including new `vel` command
+- `include/config.h` — pins, gear ratios, `PAN_DIR_INVERT`, `TILT_DIR_INVERT`
+
+**Pi Application (`pi/` directory) — all written, on GitHub, running on Pi:**
+
+| File/Dir | Status | What it does |
+|---|---|---|
+| `app/config.py` | ✅ | All constants. dotenv loading. Camera FoV IMX219: 47°H × 28°V |
+| `app/state.py` | ✅ | Thread-safe shared state |
+| `app/serial_bridge/protocol.py` | ✅ | ESP32 CLI command builders + parsers |
+| `app/serial_bridge/bridge.py` | ✅ | Priority-queue serial writer, auto-reconnect |
+| `app/camera/capture.py` | ✅ | picamera2 thread, CAMERA_ROTATION support |
+| `app/camera/stream.py` | ✅ | MJPEG async generator |
+| `app/vision/pipeline.py` | ✅ | Vision thread + tracker wired in |
+| `app/vision/detector_null.py` | ✅ | Pass-through |
+| `app/vision/detector_face.py` | ✅ | MediaPipe face detection |
+| `app/vision/detector_yolo.py` | ✅ | YOLOv8-nano (crashes on Pi 4 — skip for now) |
+| `app/vision/tracker.py` | ✅ | PID tracking → vel commands to ESP32 |
+| `app/api/router_stream.py` | ✅ | GET /stream |
+| `app/api/router_control.py` | ✅ | WS /ws/control — vel/stop/estop/home/tracking |
+| `app/api/router_detection.py` | ✅ | Detection mode switching |
+| `app/api/router_settings.py` | ✅ | Motion settings + /api/settings/ui for frontend |
+| `app/main.py` | ✅ | App factory, lifespan |
+| `app/frontend/index.html` | ✅ | Dark UI: video, joystick, overlay |
+| `app/frontend/js/app.js` | ✅ | WS, telemetry, buttons, fetches server config |
+| `app/frontend/js/controls.js` | ✅ | Joystick (squared curve) + WASD, window-level events |
+| `app/frontend/js/detection_overlay.js` | ✅ | Canvas boxes, click-to-track |
+| `app/db/` | ❌ | SQLite face DB (Phase 2f — not started) |
+| `app/vision/recognizer.py` | ❌ | Face recognition (Phase 2f) |
+| `app/api/router_faces.py` | ❌ | Face enrollment API (Phase 2f) |
+| `app/api/router_claude.py` | ❌ | Claude NL integration (Phase 2g, optional) |
+
+**GitHub repo:** `https://github.com/blueteef/PTZ_controller` (private)
 
 ---
 
@@ -137,22 +230,28 @@ Wish-list
 
 ### What Still Needs Doing (in order)
 
-**Immediate — Pi setup finishing:**
-1. Wait for `pip install -r requirements.txt` to complete on Pi (was running, slow WiFi)
-   - If it fails: `source venv/bin/activate && pip install -r requirements.txt --retries 10 --timeout 60`
-2. Run `python3 scripts/test_serial.py` with ESP32 plugged in via USB to Pi
-3. Run `bash scripts/download_models.sh` to pull YOLOv8-nano weights
-4. Launch server: `cd ~/PTZ_controller/pi && source venv/bin/activate && uvicorn app.main:app --host 0.0.0.0 --port 8000`
-5. Open browser to `http://CIWS.local:8000` — verify video stream appears
+**IMMEDIATE — Switch to stepper drive mode (do this first tomorrow):**
+1. Change both MKS drivers to `CR_vFOC` via OLED
+2. Wire Step/Dir/EN pins (see table in "PICK UP HERE" section above)
+3. Flash `env:esp32dev_stepper` from PlatformIO
+4. Test `vel pan 30` / `stop all` in serial monitor — stop should be instant
+5. Adjust `PAN_DIR_INVERT` / `TILT_DIR_INVERT` in config.h if direction wrong, reflash
 
-**ESP32 — still needs hardware testing:**
-1. **MKS driver display config** — V3.6.1 CR_UART firmware blocks config via UART. Configure via physical OLED:
-   - Work mode: CR_UART, microsteps: 16, ACC menu item 18: enabled
-   - 0_Mode = DirMode, 0_Speed = 2, 0_Dir = CW, then `Set 0` at home position
-2. **Flash updated firmware** (includes new `vel` command) and test with `ping all`
-3. **32-byte pan response drain** — pan driver returns 32 bytes to 0x3A query; fix uart drain loop in MKSServo42C.cpp
-4. **Soft limits** — enable in config.h once homing works
-5. **Homing** — requires display config first; then `home all` CLI or Y button
+**Pi — after stepper mode confirmed working:**
+1. `git pull` on Pi
+2. `pip install python-dotenv` (or `pip install -r requirements.txt`)
+3. Create `pi/.env` with inversion flags if needed
+4. Restart server and test web UI controls — stop-on-release should now work
+
+**Tracking — after controls are solid:**
+1. Enable Face detection in dropdown
+2. Confirm bounding boxes appear around faces
+3. Click a box — gimbal should follow
+
+**Remaining Phase 1 items (lower priority, do after stepper mode works):**
+1. **32-byte pan UART drain** — pan driver returns extra bytes to 0x3A query (may not matter in stepper mode since UART is only used for homing/encoder now)
+2. **Homing** — set `0_Mode = DirMode, 0_Speed = 2, 0_Dir = CW` on each driver OLED, then `Set 0` at home position. Test `home all` CLI command.
+3. **Soft limits** — enable `SOFT_LIMITS_ENABLED true` in config.h once homing works
 
 **Phase 2f (face recognition) — not started:**
 - Requires dlib (compiles from source on Pi, ~30-60 min): `pip install dlib face-recognition`
@@ -160,6 +259,7 @@ Wish-list
 - Add enrollment UI to frontend
 
 **Phase 2g (optional polish):**
+- YOLO object detection — needs alternative to ultralytics for Pi 4 ARM (tflite-runtime + MobileNet SSD, or Coral USB accelerator)
 - Xbox controller via Browser Gamepad API (`app/frontend/js/gamepad.js`) — needs HTTPS
 - Claude integration (`app/api/router_claude.py`) — set `ANTHROPIC_API_KEY` in `pi/.env`
 
@@ -167,33 +267,37 @@ Wish-list
 
 ### How to Pick This Up Quickly
 
-**If continuing Pi work:**
-1. SSH to Pi: `ssh pi@CIWS.local`
-2. `cd ~/PTZ_controller/pi && source venv/bin/activate`
-3. `python3 scripts/test_serial.py` — verify ESP32 serial first
-4. `uvicorn app.main:app --host 0.0.0.0 --port 8000` — launch server
-5. All Pi app constants are in `app/config.py` — camera FoV, serial port, PID gains
-
 **If continuing ESP32 work:**
 1. Open project in VSCode with PlatformIO extension
-2. `include/config.h` — all pins and defaults
-3. Flash, open serial monitor at 115200, type `help`
-4. `ping all` → verify UART to both drivers
-5. `diag pan 3a` / `diag tilt 3a` → raw driver responses
-6. After config.h change: flash → `reset` → `save`
+2. Select environment `esp32dev_stepper` in PlatformIO (bottom bar)
+3. `include/config.h` — all pins, gear ratios, `PAN_DIR_INVERT`, `TILT_DIR_INVERT`
+4. Flash, open serial monitor at 115200, type `help`
+5. `vel pan 30` → move, `stop all` → instant stop
+6. `ping all` → verify UART to both drivers (still used for homing)
+7. After config.h change: flash → `reset` → `save`
+
+**If continuing Pi work:**
+1. SSH to Pi: `ssh pi@CIWS.local`
+2. `cd ~/PTZ_controller && git pull`
+3. `cd pi && source venv/bin/activate`
+4. Create `pi/.env` if it doesn't exist (copy from `.env.example`)
+5. `uvicorn app.main:app --host 0.0.0.0 --port 8000`
+6. Open browser: `http://CIWS.local:8000`
 
 **Key Pi ↔ ESP32 serial protocol facts:**
 - Port: `/dev/ttyUSB0`, 115200 baud
 - ESP32 echoes every character + prints `ptz> ` prompt — Pi bridge discards this
-- Motion: `vel pan 30.0\n` (no response), `stop all\n`, `estop\n`
+- Motion: `vel pan 30.0\n` (no response printed), `stop all\n`, `estop\n`
 - Query: `get position\n` → `pan  : X.XXX °\ntilt : X.XXX °\n`
-- bridge.py uses priority queue: estop=0 (never dropped), velocity=1, queries=2
+- bridge.py priority queue: estop=0 (never dropped), velocity=1, queries=2
+- Stop sends `vel pan 0` + `vel tilt 0` + `stop all` for belt-and-suspenders
 
 **Camera facts:**
-- Sensor: IMX219 (Pi Camera Module 2 / NoIR v2)
-- FoV at 1280×720: ~47°H × 28°V (set in config.py — tune empirically if tracking drifts)
-- libcamera confirmed working on this Pi. `camera_auto_detect=1` in /boot/firmware/config.txt
-- `python3-dlib` is NOT in Bookworm apt — install via pip when face recognition is needed
+- Sensor: IMX219 (Pi Camera Module 2 / NoIR v2), confirmed working
+- FoV at 1280×720: ~47°H × 28°V (tune empirically if tracking drifts)
+- Camera physically inverted: `CAMERA_ROTATION=2` in config.py (180° rotate)
+- `python3-dlib` NOT in Bookworm apt — install via pip when face recognition is needed
+- YOLO crashes on Pi 4 (Illegal instruction — ARM incompatible torch build) — use MediaPipe for now
 
 ---
 
