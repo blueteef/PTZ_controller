@@ -128,23 +128,58 @@ function wireDetectionMode() {
 }
 
 // ---------------------------------------------------------------------------
-// Speed slider
+// Speed slider — controls both joystick max vel and tracking speed cap
 // ---------------------------------------------------------------------------
 
 function wireSpeedSlider() {
   const slider = document.getElementById("speed-slider");
   const label  = document.getElementById("speed-val");
 
-  // Use server-configured default if available, else 45
   const defaultSpeed = window._ptz_default_speed ?? 45;
   slider.value = defaultSpeed;
   label.textContent = defaultSpeed;
   window._ptz_max_vel = defaultSpeed;
 
   slider.oninput = () => {
-    label.textContent = slider.value;
-    window._ptz_max_vel = parseFloat(slider.value);
+    const v = parseFloat(slider.value);
+    label.textContent = v;
+    window._ptz_max_vel = v;
+    send({ type: "update_settings", tracking_speed: v });
   };
+}
+
+// ---------------------------------------------------------------------------
+// Acceleration slider
+// ---------------------------------------------------------------------------
+
+function wireAccelSlider() {
+  const slider = document.getElementById("accel-slider");
+  const label  = document.getElementById("accel-val");
+
+  const defaultAccel = window._ptz_default_accel ?? 120;
+  slider.value = defaultAccel;
+  label.textContent = defaultAccel;
+
+  slider.oninput = () => {
+    const v = parseFloat(slider.value);
+    label.textContent = v;
+    send({ type: "update_settings", accel: v });
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Axis invert checkboxes
+// ---------------------------------------------------------------------------
+
+function wireInvertToggles() {
+  const panCb  = document.getElementById("pan-invert");
+  const tiltCb = document.getElementById("tilt-invert");
+
+  panCb.checked  = window._ptz_pan_invert  ?? false;
+  tiltCb.checked = window._ptz_tilt_invert ?? false;
+
+  panCb.onchange  = () => send({ type: "update_settings", pan_invert:  panCb.checked });
+  tiltCb.onchange = () => send({ type: "update_settings", tilt_invert: tiltCb.checked });
 }
 
 // ---------------------------------------------------------------------------
@@ -156,7 +191,10 @@ window.addEventListener("DOMContentLoaded", async () => {
   try {
     const res = await fetch("/api/settings/ui");
     const cfg = await res.json();
-    window._ptz_default_speed = cfg.default_speed;
+    window._ptz_default_speed  = cfg.default_speed;
+    window._ptz_default_accel  = cfg.accel_deg_s2;
+    window._ptz_pan_invert     = cfg.pan_invert;
+    window._ptz_tilt_invert    = cfg.tilt_invert;
     window._ptz_cam_w = 1280;
     window._ptz_cam_h = 720;
   } catch (e) {
@@ -167,6 +205,8 @@ window.addEventListener("DOMContentLoaded", async () => {
   wireButtons();
   wireDetectionMode();
   wireSpeedSlider();
+  wireAccelSlider();
+  wireInvertToggles();
   initJoystick(document.getElementById("joystick"));
   initOverlay(
     document.getElementById("feed"),

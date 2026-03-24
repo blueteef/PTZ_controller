@@ -63,7 +63,7 @@
 // Motion defaults  — conservative starting point; tune with 'set speed/accel'
 // -----------------------------------------------------------------------------
 #define DEFAULT_MAX_SPEED_DEG_S    90.0f   // output-shaft deg/s
-#define DEFAULT_ACCEL_DEG_S2      360.0f   // output-shaft deg/s²  (ramp fast, stop crisp)
+#define DEFAULT_ACCEL_DEG_S2      120.0f   // output-shaft deg/s²
 #define DEFAULT_FINE_SPEED_SCALE    0.2f   // 'jog fine' multiplier
 
 // Minimum speed threshold below which setVelocity issues a stop instead.

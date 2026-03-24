@@ -89,8 +89,11 @@ JOYSTICK_DEFAULT_SPEED = float(os.getenv("JOYSTICK_DEFAULT_SPEED", "45.0"))
 PID_KP             = 0.08    # proportional gain
 PID_KI             = 0.001   # integral gain
 PID_KD             = 0.01    # derivative gain
-PID_MAX_VEL_DEG_S  = 60.0   # maximum velocity sent to ESP32
+PID_MAX_VEL_DEG_S  = float(os.getenv("PID_MAX_VEL_DEG_S", "45.0"))  # tracking speed cap
 TRACKING_DEADBAND_PX = 15    # pixel radius around center — no correction inside
+
+# Runtime-mutable motion settings (changed via UI sliders)
+ACCEL_DEG_S2 = float(os.getenv("ACCEL_DEG_S2", "120.0"))
 
 # Coast mode: if no detection for this many frames, decay velocity to zero
 TRACKING_COAST_FRAMES = 5

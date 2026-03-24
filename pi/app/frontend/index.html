@@ -65,8 +65,21 @@
 
         <!-- Speed -->
         <section>
-          <h3>Speed <span id="speed-val">—</span> °/s</h3>
-          <input id="speed-slider" type="range" min="5" max="180" value="180">
+          <h3>Max Speed <span id="speed-val">—</span> °/s</h3>
+          <input id="speed-slider" type="range" min="5" max="180" value="45">
+        </section>
+
+        <!-- Acceleration -->
+        <section>
+          <h3>Acceleration <span id="accel-val">—</span> °/s²</h3>
+          <input id="accel-slider" type="range" min="30" max="720" step="10" value="120">
+        </section>
+
+        <!-- Axis invert -->
+        <section>
+          <h3>Axis Invert</h3>
+          <label class="toggle-row"><input type="checkbox" id="pan-invert"> Pan</label>
+          <label class="toggle-row"><input type="checkbox" id="tilt-invert"> Tilt</label>
         </section>
 
       </aside>

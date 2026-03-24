@@ -133,6 +133,18 @@ async def _handle_message(ws: WebSocket, raw: str) -> None:
         mode = msg.get("mode", "none")
         pipeline.set_mode(mode)
 
+    elif t == "update_settings":
+        # Runtime tuning — applied immediately, not persisted across restart.
+        if "tracking_speed" in msg:
+            config.PID_MAX_VEL_DEG_S = float(msg["tracking_speed"])
+        if "pan_invert" in msg:
+            config.PAN_INVERT = bool(msg["pan_invert"])
+        if "tilt_invert" in msg:
+            config.TILT_INVERT = bool(msg["tilt_invert"])
+        if "accel" in msg:
+            config.ACCEL_DEG_S2 = float(msg["accel"])
+            bridge.send(protocol.cmd_set_accel(config.ACCEL_DEG_S2))
+
     elif t == "set_tracking":
         enabled   = bool(msg.get("enabled", False))
         target_id = msg.get("target_id")

@@ -16,11 +16,13 @@ router = APIRouter(prefix="/api/settings")
 
 @router.get("/ui")
 async def get_ui_config():
-    """Frontend config values derived from server config."""
+    """Frontend config values — initial state for all UI sliders/toggles."""
     return {
-        "default_speed":  config.JOYSTICK_DEFAULT_SPEED,
-        "pan_invert":     config.PAN_INVERT,
-        "tilt_invert":    config.TILT_INVERT,
+        "default_speed":    config.JOYSTICK_DEFAULT_SPEED,
+        "tracking_speed":   config.PID_MAX_VEL_DEG_S,
+        "accel_deg_s2":     config.ACCEL_DEG_S2,
+        "pan_invert":       config.PAN_INVERT,
+        "tilt_invert":      config.TILT_INVERT,
     }
 
 
