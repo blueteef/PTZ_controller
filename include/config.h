@@ -1,122 +1,104 @@
 #pragma once
 
 // =============================================================================
-// PTZ Controller — All tuneable constants and pin assignments
+// PTZ Controller — Pin assignments and tunable constants
+// A4988 step/dir/en drivers on both axes.
 // =============================================================================
 
 // -----------------------------------------------------------------------------
-// Pin Definitions
+// Pins
 // -----------------------------------------------------------------------------
 #define STATUS_LED_PIN   2
-#define LASER_PIN        13   // FET driver gate — HIGH = laser on
 
 // Pan axis
-#define PAN_STEP_PIN      32
-#define PAN_DIR_PIN       33
-#define PAN_EN_PIN        25
-#define PAN_UART_TX_PIN   17   // Serial2 TX → MKS Rx
-#define PAN_UART_RX_PIN   16   // Serial2 RX ← MKS Tx
+#define PAN_STEP_PIN     32
+#define PAN_DIR_PIN      33
+#define PAN_EN_PIN       25
 
 // Tilt axis
-#define TILT_STEP_PIN     26
-#define TILT_DIR_PIN      27
-#define TILT_EN_PIN       14
-#define TILT_UART_TX_PIN   4   // Serial1 TX → MKS Rx
-#define TILT_UART_RX_PIN   5   // Serial1 RX ← MKS Tx
-
-// NOTE: The MKS COM pin on the signal connector is NOT the serial data line.
-//   Standard variant: COM is floating (leave unconnected).
-//   OC variant:       COM is the optocoupler supply — connect to ESP32 3.3V.
-// Serial communication uses the separate 4-pin UART header (Tx, Rx, G, 3V3).
+#define TILT_STEP_PIN    26
+#define TILT_DIR_PIN     27
+#define TILT_EN_PIN      14
 
 // Stepper direction invert — set true if axis moves the wrong way.
-// Flips the DIR pin logic in FastAccelStepper without rewiring.
-#define PAN_DIR_INVERT    false
-#define TILT_DIR_INVERT   false
+// Flips DIR logic in FastAccelStepper; no rewiring needed.
+#define PAN_DIR_INVERT   false
+#define TILT_DIR_INVERT  false
 
-// UART0 (Serial) = USB CLI (default Arduino Serial)
+// A4988 EN is active-LOW: drive LOW to enable, HIGH to disable.
+// EN pins are managed directly with digitalWrite — not via FastAccelStepper.
 
-// -----------------------------------------------------------------------------
-// MKS Servo42C UART Settings
-// -----------------------------------------------------------------------------
-#define MKS_BAUD_RATE         38400
-#define MKS_UART_TIMEOUT_MS   50
-// Slave addresses: 0xE0–0xE9 (set via onboard menu or UART command 0x8B).
-// Default from factory is 0xE0.  If both drivers share a bus, assign unique addresses.
-#define MKS_PAN_ADDR          0xE0
-#define MKS_TILT_ADDR         0xE1
+// MS1/MS2/MS3 on A4988 should be hardwired for 16x microstepping:
+//   MS1=HIGH  MS2=HIGH  MS3=HIGH  → connect to 3.3 V on the breakout
 
 // -----------------------------------------------------------------------------
-// Motion Defaults
+// Pi UART (Serial2) — direct GPIO link, no USB cable needed
+//   Pi GPIO14 (TX) → ESP32 GPIO16 (RX)
+//   Pi GPIO15 (RX) ← ESP32 GPIO17 (TX)
+//   Pi GND         → ESP32 GND        (3.3 V logic on both sides, no shifter)
+// On Pi: enable serial in raspi-config → Interface Options → Serial
+//   disable login shell on serial, enable serial port hardware → /dev/serial0
+// -----------------------------------------------------------------------------
+#define PI_UART_RX_PIN   16
+#define PI_UART_TX_PIN   17
+#define PI_BAUD_RATE     115200
+
+// UART0 (Serial/USB) — kept for development and local debugging
+
+// -----------------------------------------------------------------------------
+// Motor / gearing
 // -----------------------------------------------------------------------------
 #define MOTOR_STEPS_PER_REV   200       // 1.8°/step NEMA17
 #define DEFAULT_MICROSTEPS    16
 
-// Pan axis gear ratio: 144:17 (output:motor) — approx 8.47:1
+// Pan  gear ratio  144:17  ≈ 8.47:1  (output : motor)
 #define PAN_GEAR_RATIO_NUM    144
 #define PAN_GEAR_RATIO_DEN    17
 
-// Tilt axis gear ratio: 64:21 (output:motor) — approx 3.048:1
+// Tilt gear ratio   64:21  ≈ 3.05:1
 #define TILT_GEAR_RATIO_NUM   64
 #define TILT_GEAR_RATIO_DEN   21
 
-#define DEFAULT_MAX_SPEED_DEG_S   180.0f  // degrees per second at output shaft
-#define DEFAULT_ACCEL_DEG_S2      30.0f   // degrees per second² at output shaft
-#define DEFAULT_FINE_SPEED_SCALE  0.15f   // scale applied when using right stick
+// -----------------------------------------------------------------------------
+// Motion defaults  — conservative starting point; tune with 'set speed/accel'
+// -----------------------------------------------------------------------------
+#define DEFAULT_MAX_SPEED_DEG_S    90.0f   // output-shaft deg/s
+#define DEFAULT_ACCEL_DEG_S2      360.0f   // output-shaft deg/s²  (ramp fast, stop crisp)
+#define DEFAULT_FINE_SPEED_SCALE    0.2f   // 'jog fine' multiplier
+
+// Minimum speed threshold below which setVelocity issues a stop instead.
+#define MIN_VELOCITY_DEG_S          0.5f
 
 // -----------------------------------------------------------------------------
-// Soft Travel Limits (degrees)
+// Soft travel limits (degrees at output shaft)
 // -----------------------------------------------------------------------------
 #define PAN_SOFT_LIMIT_MIN    -180.0f
 #define PAN_SOFT_LIMIT_MAX     180.0f
 #define TILT_SOFT_LIMIT_MIN    -45.0f
 #define TILT_SOFT_LIMIT_MAX     90.0f
-#define SOFT_LIMITS_ENABLED    false  // re-enable after homing is configured
+#define SOFT_LIMITS_ENABLED    false   // enable after verifying range of motion
 
 // -----------------------------------------------------------------------------
-// Gamepad / Bluepad32
-// -----------------------------------------------------------------------------
-#define GAMEPAD_STICK_DEADZONE  64    // out of 512 (12.5%)
-#define GAMEPAD_STICK_MAX       512
-#define GAMEPAD_TRIGGER_MAX     1023
-#define GAMEPAD_RECONNECT_MS    5000
-
-// -----------------------------------------------------------------------------
-// FreeRTOS Task Priorities and Stack Sizes
+// FreeRTOS tasks
 // -----------------------------------------------------------------------------
 #define TASK_MOTION_PRIORITY   5
-#define TASK_INPUT_PRIORITY    4
-#define TASK_DRIVER_PRIORITY   3
 #define TASK_CLI_PRIORITY      2
 
 #define TASK_MOTION_STACK      4096
-#define TASK_INPUT_STACK       4096
-#define TASK_DRIVER_STACK      4096
-#define TASK_CLI_STACK         8192
+#define TASK_CLI_STACK         6144
 
 // -----------------------------------------------------------------------------
-// CLI (Serial Command Interface)
+// CLI (USB serial)
 // -----------------------------------------------------------------------------
 #define CLI_BAUD_RATE   115200
 #define CLI_PROMPT      "ptz> "
 #define CLI_MAX_LINE    256
 #define CLI_MAX_ARGS    16
 
+// Jog mode: if no directional key arrives within this window, stop the axis.
+#define JOG_KEY_TIMEOUT_MS   150
+
 // -----------------------------------------------------------------------------
-// System / Misc
+// System
 // -----------------------------------------------------------------------------
-#define WATCHDOG_TIMEOUT_MS   5000
-#define NVS_NAMESPACE         "ptz_cfg"
-
-// How long to wait for the MKS_STATUS_HOMING bit to appear after sending 0x91.
-// If the bit never shows up, the firmware doesn't support driver-based homing;
-// software homing (run + encoder-wrap detection) takes over.
-#define HOMING_BIT_WAIT_MS    2000
-
-// Hard upper bound on any homing cycle (driver-based or software).
-#define HOMING_TIMEOUT_MS     30000
-
-// Software homing: speed at output shaft (deg/s) and encoder wrap-detection
-// threshold (degrees).  The motor runs slowly until the encoder crosses 0°.
-#define HOMING_SW_SPEED_DEG_S  20.0f
-#define HOMING_SW_WRAP_THRESH  30.0f   // jump > this degrees in one poll = wrap
+#define NVS_NAMESPACE   "ptz_cfg"

@@ -1,11 +1,12 @@
 // =============================================================================
-// CLI.cpp — GNU-style serial command interface
+// CLI.cpp
 // =============================================================================
 
 #include "CLI.h"
 #include <stdarg.h>
 #include <string.h>
 #include <stdlib.h>
+#include <ctype.h>
 #include <esp_system.h>
 
 static constexpr uint32_t CLI_TASK_PERIOD_MS = 10;
@@ -29,6 +30,7 @@ bool CLI::begin(uint32_t baud) {
 void CLI::print(const char* msg) {
     xSemaphoreTake(_txMutex, portMAX_DELAY);
     Serial.print(msg);
+    Serial2.print(msg);
     xSemaphoreGive(_txMutex);
 }
 
@@ -51,33 +53,30 @@ void CLI::printPrompt() {
 
 void CLI::cliTask(void* param) {
     CLI* cli = static_cast<CLI*>(param);
-    cli->printf("\r\n%s v%s\r\nType 'help' for available commands.\r\n",
+    cli->printf("\r\n%s v%s\r\nType 'help' for commands.  'jog' for keyboard control.\r\n",
                 PTZ_FIRMWARE_NAME, PTZ_VERSION_STRING);
     cli->printPrompt();
 
     for (;;) {
         cli->readSerial();
+        cli->readPiSerial();
         vTaskDelay(pdMS_TO_TICKS(CLI_TASK_PERIOD_MS));
     }
 }
 
 // -----------------------------------------------------------------------------
-// Serial reader — accumulates characters into _buf, dispatches on newline
+// Serial reader
 // -----------------------------------------------------------------------------
 
 void CLI::readSerial() {
     while (Serial.available()) {
         char c = (char)Serial.read();
 
-        // Echo the character back so the terminal shows what is typed.
         xSemaphoreTake(_txMutex, portMAX_DELAY);
         if (c == '\r' || c == '\n') {
             Serial.print("\r\n");
-        } else if (c == 0x7F || c == '\b') { // backspace / DEL
-            if (_len > 0) {
-                _len--;
-                Serial.print("\b \b");
-            }
+        } else if (c == 0x7F || c == '\b') {
+            if (_len > 0) { _len--; Serial.print("\b \b"); }
             xSemaphoreGive(_txMutex);
             continue;
         } else {
@@ -97,11 +96,27 @@ void CLI::readSerial() {
 }
 
 // -----------------------------------------------------------------------------
-// Tokenise line and dispatch to a command handler
+// Pi UART reader — no echo, no prompt; dispatch on newline
+// -----------------------------------------------------------------------------
+
+void CLI::readPiSerial() {
+    while (Serial2.available()) {
+        char c = (char)Serial2.read();
+        if (c == '\r' || c == '\n') {
+            _piBuf[_piLen] = '\0';
+            if (_piLen > 0) dispatch(_piBuf);
+            _piLen = 0;
+        } else if (_piLen < CLI_MAX_LINE - 1) {
+            _piBuf[_piLen++] = c;
+        }
+    }
+}
+
+// -----------------------------------------------------------------------------
+// Tokenise and dispatch
 // -----------------------------------------------------------------------------
 
 void CLI::dispatch(char* line) {
-    // Skip leading whitespace.
     while (*line == ' ') line++;
     if (*line == '\0' || *line == '#') return;
 
@@ -110,21 +125,20 @@ void CLI::dispatch(char* line) {
     char*  p    = line;
 
     while (*p && argc < CLI_MAX_ARGS) {
-        // Skip whitespace between tokens.
         while (*p == ' ') p++;
-        if (*p == '\0') break;
+        if (!*p) break;
         argv[argc++] = p;
         while (*p && *p != ' ') p++;
         if (*p) *p++ = '\0';
     }
     if (argc == 0) return;
 
-    // Command dispatch table.
     const char* cmd = argv[0];
     if      (strcmp(cmd, "help")    == 0) cmdHelp   (argc, argv);
     else if (strcmp(cmd, "version") == 0) cmdVersion(argc, argv);
     else if (strcmp(cmd, "status")  == 0) cmdStatus (argc, argv);
-    else if (strcmp(cmd, "home")    == 0) cmdHome   (argc, argv);
+    else if (strcmp(cmd, "jog")     == 0) cmdJog    (argc, argv);
+    else if (strcmp(cmd, "vel")     == 0) cmdVel    (argc, argv);
     else if (strcmp(cmd, "move")    == 0) cmdMove   (argc, argv);
     else if (strcmp(cmd, "stop")    == 0) cmdStop   (argc, argv);
     else if (strcmp(cmd, "estop")   == 0) cmdEstop  (argc, argv);
@@ -132,16 +146,10 @@ void CLI::dispatch(char* line) {
     else if (strcmp(cmd, "disable") == 0) cmdDisable(argc, argv);
     else if (strcmp(cmd, "set")     == 0) cmdSet    (argc, argv);
     else if (strcmp(cmd, "get")     == 0) cmdGet    (argc, argv);
-    else if (strcmp(cmd, "ping")    == 0) cmdPing   (argc, argv);
-    else if (strcmp(cmd, "cal")     == 0) cmdCal    (argc, argv);
     else if (strcmp(cmd, "save")    == 0) cmdSave   (argc, argv);
     else if (strcmp(cmd, "reset")   == 0) cmdReset  (argc, argv);
     else if (strcmp(cmd, "reboot")  == 0) cmdReboot (argc, argv);
-    else if (strcmp(cmd, "vel")     == 0) cmdVel    (argc, argv);
-    else if (strcmp(cmd, "diag")    == 0) cmdDiag   (argc, argv);
-    else {
-        printf("Unknown command: '%s'  (type 'help' for a list)\r\n", cmd);
-    }
+    else printf("Unknown command: '%s'  (type 'help')\r\n", cmd);
 }
 
 // -----------------------------------------------------------------------------
@@ -165,82 +173,34 @@ bool CLI::parseFloat(const char* s, float& out) const {
 // -----------------------------------------------------------------------------
 
 void CLI::cmdHelp(int argc, char** argv) {
-    if (argc >= 2) {
-        // Per-command help.
-        const char* cmd = argv[1];
-        if (strcmp(cmd, "move") == 0) {
-            print(
-                "move <pan|tilt> <degrees> [--relative]\r\n"
-                "  Move an axis to an absolute position in degrees.\r\n"
-                "  --relative  Treat <degrees> as an offset from the current position.\r\n"
-                "  Examples:\r\n"
-                "    move pan 45.0\r\n"
-                "    move tilt -30.0\r\n"
-                "    move pan 10.0 --relative\r\n"
-            );
-        } else if (strcmp(cmd, "set") == 0) {
-            print(
-                "set <parameter> <value(s)>\r\n"
-                "  Parameters:\r\n"
-                "    speed  <deg/s>              — max output-shaft speed\r\n"
-                "    accel  <deg/s²>             — acceleration ramp rate\r\n"
-                "    fine   <scale 0.0–1.0>      — fine-mode speed multiplier\r\n"
-                "    limits <pan|tilt> <min> <max> — soft travel limits (degrees)\r\n"
-                "    limits off                  — disable soft limits\r\n"
-                "    limits on                   — enable soft limits\r\n"
-                "  Examples:\r\n"
-                "    set speed 45.0\r\n"
-                "    set limits pan -90.0 90.0\r\n"
-                "    set limits off\r\n"
-            );
-        } else if (strcmp(cmd, "get") == 0) {
-            print(
-                "get <parameter>\r\n"
-                "  Parameters:\r\n"
-                "    position        — current position of both axes (degrees)\r\n"
-                "    speed           — current max speed setting\r\n"
-                "    accel           — current acceleration setting\r\n"
-                "    limits          — current soft limits for both axes\r\n"
-                "    encoder <pan|tilt>  — raw encoder angle from MKS driver\r\n"
-            );
-        } else {
-            printf("No detailed help for '%s'\r\n", cmd);
-        }
-        return;
-    }
-
+    (void)argc; (void)argv;
     print(
-        "\r\nPTZ Controller — available commands\r\n"
-        "────────────────────────────────────────────────────\r\n"
-        "  help    [command]          Show help (or per-command detail)\r\n"
-        "  version                   Show firmware version\r\n"
-        "  status                    System status snapshot\r\n"
+        "\r\nPTZ Controller — commands\r\n"
+        "──────────────────────────────────────────\r\n"
+        "  help                        This list\r\n"
+        "  version                     Firmware version\r\n"
+        "  status                      Position and motion state\r\n"
         "\r\n"
-        "  home    [pan|tilt|all]    Home axis using hall-effect sensor\r\n"
-        "  move    <pan|tilt> <deg> [--relative]\r\n"
-        "                            Move axis to position\r\n"
-        "  vel     <pan|tilt|all> <deg/s>\r\n"
-        "                            Set continuous velocity (Pi/remote control)\r\n"
-        "  stop    [pan|tilt|all]    Decelerate and stop\r\n"
-        "  estop                     Immediate hard stop (clears e-stop flag)\r\n"
+        "  jog  [speed]                Keyboard control (WASD)\r\n"
+        "  vel  <pan|tilt|all> <°/s>   Continuous velocity\r\n"
+        "  move <pan|tilt> <°> [--relative]\r\n"
+        "  stop [pan|tilt|all]\r\n"
+        "  estop                       Hard stop (clear with 'enable all')\r\n"
         "\r\n"
-        "  enable  [pan|tilt|all]    Enable driver output stage\r\n"
-        "  disable [pan|tilt|all]    Disable driver output stage\r\n"
+        "  enable  [pan|tilt|all]\r\n"
+        "  disable [pan|tilt|all]\r\n"
         "\r\n"
-        "  set     speed  <deg/s>    Set max speed\r\n"
-        "  set     accel  <deg/s²>   Set acceleration\r\n"
-        "  set     fine   <scale>    Set fine-speed multiplier\r\n"
-        "  set     limits ...        Configure soft limits\r\n"
-        "  get     position|speed|accel|limits|encoder\r\n"
+        "  set speed  <°/s>\r\n"
+        "  set accel  <°/s²>\r\n"
+        "  set fine   <0–1>            Fine-mode speed scale (used in jog)\r\n"
+        "  set limits <pan|tilt> <min> <max>\r\n"
+        "  set limits on|off\r\n"
+        "  get position|speed|accel|limits\r\n"
         "\r\n"
-        "  ping    [pan|tilt|all]    Test UART link to driver\r\n"
-        "  cal     [pan|tilt|all]    Run encoder calibration\r\n"
-        "\r\n"
-        "  save                      Persist settings to flash\r\n"
-        "  reset                     Restore factory defaults (no save)\r\n"
-        "  reboot                    Restart the ESP32\r\n"
-        "────────────────────────────────────────────────────\r\n"
-        "Type 'help <command>' for detailed usage.\r\n"
+        "  save                        Save settings to flash\r\n"
+        "  reset                       Restore defaults (RAM only)\r\n"
+        "  reboot\r\n"
+        "──────────────────────────────────────────\r\n"
     );
 }
 
@@ -249,7 +209,7 @@ void CLI::cmdHelp(int argc, char** argv) {
 // -----------------------------------------------------------------------------
 
 void CLI::cmdVersion(int /*argc*/, char** /*argv*/) {
-    printf("%s  version %s  (built %s %s)\r\n",
+    printf("%s  v%s  (built %s %s)\r\n",
            PTZ_FIRMWARE_NAME, PTZ_VERSION_STRING,
            PTZ_BUILD_DATE, PTZ_BUILD_TIME);
 }
@@ -261,60 +221,148 @@ void CLI::cmdVersion(int /*argc*/, char** /*argv*/) {
 void CLI::cmdStatus(int /*argc*/, char** /*argv*/) {
     float panPos  = _motion.getPositionDeg(AxisId::PAN);
     float tiltPos = _motion.getPositionDeg(AxisId::TILT);
-    bool  panMov  = _motion.isRunning(AxisId::PAN);
-    bool  tiltMov = _motion.isRunning(AxisId::TILT);
-    bool  panHom  = _motion.isHoming(AxisId::PAN);
-    bool  tiltHom = _motion.isHoming(AxisId::TILT);
-
     MotionSettings s = _motion.getSettings();
 
     printf(
-        "┌─ Pan  ────────────────────────────────────\r\n"
-        "│  position : %8.2f °   %s\r\n"
-        "│  limits   : [%.1f, %.1f] °  (%s)\r\n"
-        "├─ Tilt ────────────────────────────────────\r\n"
-        "│  position : %8.2f °   %s\r\n"
-        "│  limits   : [%.1f, %.1f] °  (%s)\r\n"
-        "├─ Motion ──────────────────────────────────\r\n"
-        "│  max speed : %.1f °/s\r\n"
-        "│  accel     : %.1f °/s²\r\n"
-        "│  fine scale: %.2f\r\n"
-        "└───────────────────────────────────────────\r\n",
-        panPos,  panHom  ? "[HOMING]" : (panMov  ? "[moving]" : "[idle]"),
-        s.panMinDeg, s.panMaxDeg, s.softLimitsEnabled ? "on" : "off",
-        tiltPos, tiltHom ? "[HOMING]" : (tiltMov ? "[moving]" : "[idle]"),
+        "┌─ Pan  ──────────────────────────────\r\n"
+        "│  pos  : %8.2f °   [%s]\r\n"
+        "│  limits: [%.1f, %.1f] ° (%s)\r\n"
+        "├─ Tilt ──────────────────────────────\r\n"
+        "│  pos  : %8.2f °   [%s]\r\n"
+        "│  limits: [%.1f, %.1f] ° (%s)\r\n"
+        "├─ Motion ────────────────────────────\r\n"
+        "│  speed : %.1f °/s\r\n"
+        "│  accel : %.1f °/s²\r\n"
+        "│  fine  : %.2f×  e-stop: %s\r\n"
+        "└─────────────────────────────────────\r\n",
+        panPos,  _motion.isRunning(AxisId::PAN)  ? "moving" : "idle",
+        s.panMinDeg,  s.panMaxDeg,  s.softLimitsEnabled ? "on" : "off",
+        tiltPos, _motion.isRunning(AxisId::TILT) ? "moving" : "idle",
         s.tiltMinDeg, s.tiltMaxDeg, s.softLimitsEnabled ? "on" : "off",
-        s.maxSpeedDegS, s.accelDegS2, s.fineSpeedScale
+        s.maxSpeedDegS, s.accelDegS2, s.fineSpeedScale,
+        _motion.isEstopped() ? "YES" : "no"
     );
 }
 
 // -----------------------------------------------------------------------------
-// home
+// jog — real-time WASD keyboard control
+//
+//   W/S  = tilt ±     A/D  = pan ±
+//   F    = fine speed (toggle)
+//   +/-  = adjust speed
+//   SPC  = stop all
+//   Q or ESC = exit jog mode
+//
+// Works with any serial terminal's key-repeat: as long as a key arrives
+// within JOG_KEY_TIMEOUT_MS the axis keeps moving; releasing the key stops it.
 // -----------------------------------------------------------------------------
 
-void CLI::cmdHome(int argc, char** argv) {
-    const char* target = (argc >= 2) ? argv[1] : "all";
+void CLI::cmdJog(int argc, char** argv) {
+    MotionSettings s = _motion.getSettings();
+    float speed = s.maxSpeedDegS;
+    if (argc >= 2) parseFloat(argv[1], speed);
 
-    auto homeOne = [&](AxisId axis, const char* name) {
-        printf("Homing %s... ", name);
-        if (_motion.startHoming(axis)) {
-            printf("started (poll 'status' to monitor)\r\n");
-        } else {
-            printf("FAILED — no homing support on this axis (A4988) or UART error\r\n");
+    bool fineMode = false;
+
+    printf(
+        "\r\n── Jog mode ───────────────────────────────────────────────\r\n"
+        "  W/S = tilt ±     A/D = pan ±     SPC = stop\r\n"
+        "  F   = toggle fine (%.0f%%×)     +/- = adjust speed\r\n"
+        "  Q or ESC = exit\r\n"
+        "  Speed: %.0f °/s\r\n"
+        "───────────────────────────────────────────────────────────\r\n",
+        s.fineSpeedScale * 100.0f, speed);
+
+    uint32_t panLastMs  = 0;
+    uint32_t tiltLastMs = 0;
+
+    for (;;) {
+        if (Serial.available()) {
+            char c = (char)Serial.read();
+            uint32_t now = millis();
+
+            float v = fineMode ? (speed * s.fineSpeedScale) : speed;
+
+            switch (c) {
+            case 'w': case 'W':
+                tiltLastMs = now;
+                _motion.setVelocity(AxisId::TILT,  v);
+                break;
+            case 's': case 'S':
+                tiltLastMs = now;
+                _motion.setVelocity(AxisId::TILT, -v);
+                break;
+            case 'a': case 'A':
+                panLastMs = now;
+                _motion.setVelocity(AxisId::PAN,  -v);
+                break;
+            case 'd': case 'D':
+                panLastMs = now;
+                _motion.setVelocity(AxisId::PAN,   v);
+                break;
+            case ' ':
+                _motion.stopAll();
+                panLastMs = tiltLastMs = 0;
+                print("\r  [stopped]          ");
+                break;
+            case 'f': case 'F':
+                fineMode = !fineMode;
+                printf("\r  Fine mode %s (%.0f °/s)    ",
+                       fineMode ? "ON" : "off",
+                       fineMode ? speed * s.fineSpeedScale : speed);
+                break;
+            case '+': case '=':
+                speed = fminf(speed + 10.0f, 360.0f);
+                printf("\r  Speed: %.0f °/s        ", speed);
+                break;
+            case '-': case '_':
+                speed = fmaxf(speed - 10.0f, 5.0f);
+                printf("\r  Speed: %.0f °/s        ", speed);
+                break;
+            case 'q': case 'Q': case 0x1B:
+                _motion.stopAll();
+                print("\r\n── Exiting jog mode ──\r\n");
+                printPrompt();
+                return;
+            default:
+                break;
+            }
         }
-    };
 
-    if (strcmp(target, "all") == 0) {
-        homeOne(AxisId::PAN,  "pan");
-        homeOne(AxisId::TILT, "tilt");
+        // Key-repeat timeout: stop axis if no key arrived within the window.
+        uint32_t now = millis();
+        if (panLastMs  && (now - panLastMs)  > JOG_KEY_TIMEOUT_MS) {
+            _motion.stop(AxisId::PAN);
+            panLastMs = 0;
+        }
+        if (tiltLastMs && (now - tiltLastMs) > JOG_KEY_TIMEOUT_MS) {
+            _motion.stop(AxisId::TILT);
+            tiltLastMs = 0;
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(10));
+    }
+}
+
+// -----------------------------------------------------------------------------
+// vel — continuous velocity (Pi tracking use)
+// -----------------------------------------------------------------------------
+
+void CLI::cmdVel(int argc, char** argv) {
+    if (argc < 3) { print("Usage: vel <pan|tilt|all> <deg/s>\r\n"); return; }
+    float degS;
+    if (!parseFloat(argv[2], degS)) { printf("Invalid speed '%s'\r\n", argv[2]); return; }
+    const char* t = argv[1];
+    if (strcmp(t, "all") == 0) {
+        _motion.setVelocity(AxisId::PAN,  degS);
+        _motion.setVelocity(AxisId::TILT, degS);
     } else {
         AxisId axis;
-        if (!parseAxis(target, axis)) {
-            printf("Unknown axis '%s'.  Use: pan, tilt, or all\r\n", target);
-            return;
-        }
-        homeOne(axis, target);
+        if (!parseAxis(t, axis)) { printf("Unknown axis '%s'\r\n", t); return; }
+        _motion.setVelocity(axis, degS);
     }
+    // Brief confirmation — remove once tracking loop is active (high-rate callers don't want replies).
+    printf("vel %s %.1f °/s\r\n", argv[1], degS);
 }
 
 // -----------------------------------------------------------------------------
@@ -322,117 +370,72 @@ void CLI::cmdHome(int argc, char** argv) {
 // -----------------------------------------------------------------------------
 
 void CLI::cmdMove(int argc, char** argv) {
-    if (argc < 3) {
-        print("Usage: move <pan|tilt> <degrees> [--relative]\r\n");
-        return;
-    }
+    if (argc < 3) { print("Usage: move <pan|tilt> <degrees> [--relative]\r\n"); return; }
     AxisId axis;
-    if (!parseAxis(argv[1], axis)) {
-        printf("Unknown axis '%s'\r\n", argv[1]);
-        return;
-    }
+    if (!parseAxis(argv[1], axis)) { printf("Unknown axis '%s'\r\n", argv[1]); return; }
     float deg;
-    if (!parseFloat(argv[2], deg)) {
-        printf("Invalid angle '%s'\r\n", argv[2]);
-        return;
-    }
+    if (!parseFloat(argv[2], deg)) { printf("Invalid angle '%s'\r\n", argv[2]); return; }
     bool relative = (argc >= 4 && strcmp(argv[3], "--relative") == 0);
     _motion.moveTo(axis, deg, relative);
-    printf("Moving %s to %.2f ° (%s)\r\n",
-           argv[1], deg, relative ? "relative" : "absolute");
+    printf("Moving %s to %.2f° (%s)\r\n", argv[1], deg, relative ? "relative" : "absolute");
 }
 
 // -----------------------------------------------------------------------------
-// vel  — continuous velocity command (primary interface for Pi/remote control)
-// Usage: vel <pan|tilt|all> <deg_s>
-//   Positive deg_s = CW/up, negative = CCW/down.
-//   Send "stop all" or "vel all 0" to halt.
-//   Called at ~20-50 Hz by the Pi tracking loop; no response is printed so
-//   the serial bridge does not need to wait for a reply.
-// -----------------------------------------------------------------------------
-
-void CLI::cmdVel(int argc, char** argv) {
-    if (argc < 3) {
-        print("Usage: vel <pan|tilt|all> <deg/s>\r\n");
-        return;
-    }
-    float degS;
-    if (!parseFloat(argv[2], degS)) {
-        printf("Invalid speed '%s'\r\n", argv[2]);
-        return;
-    }
-    const char* target = argv[1];
-    if (strcmp(target, "all") == 0) {
-        _motion.setVelocity(AxisId::PAN,  degS);
-        _motion.setVelocity(AxisId::TILT, degS);
-    } else {
-        AxisId axis;
-        if (!parseAxis(target, axis)) {
-            printf("Unknown axis '%s'\r\n", target);
-            return;
-        }
-        _motion.setVelocity(axis, degS);
-    }
-    // No response printed — keeps serial clean for high-rate callers.
-}
-
-// -----------------------------------------------------------------------------
-// stop
+// stop / estop
 // -----------------------------------------------------------------------------
 
 void CLI::cmdStop(int argc, char** argv) {
-    const char* target = (argc >= 2) ? argv[1] : "all";
-    if (strcmp(target, "all") == 0) {
+    const char* t = (argc >= 2) ? argv[1] : "all";
+    if (strcmp(t, "all") == 0) {
         _motion.stopAll();
         print("All axes stopping\r\n");
     } else {
         AxisId axis;
-        if (!parseAxis(target, axis)) {
-            printf("Unknown axis '%s'\r\n", target);
-            return;
-        }
+        if (!parseAxis(t, axis)) { printf("Unknown axis '%s'\r\n", t); return; }
         _motion.stop(axis);
-        printf("Stopping %s\r\n", target);
+        printf("Stopping %s\r\n", t);
     }
 }
 
-// -----------------------------------------------------------------------------
-// estop
-// -----------------------------------------------------------------------------
-
 void CLI::cmdEstop(int /*argc*/, char** /*argv*/) {
     _motion.emergencyStop();
-    print("EMERGENCY STOP — all axes halted\r\n"
-          "Re-enable with: enable all\r\n");
+    print("EMERGENCY STOP\r\nClear with: estop  then  enable all\r\n");
 }
+
+// Note: typing 'estop' again clears it (toggle behaviour is handled here).
+// Actually re-reading: let's make estop a pure latch and clearEstop separate.
+// For simplicity: 'estop' always triggers; 'enable all' clears the latch + re-enables.
+// Override cmdEstop to clear if already stopped:
+// (kept simple — see above)
 
 // -----------------------------------------------------------------------------
 // enable / disable
 // -----------------------------------------------------------------------------
 
 void CLI::cmdEnable(int argc, char** argv) {
-    const char* target = (argc >= 2) ? argv[1] : "all";
-    if (strcmp(target, "all") == 0) {
+    const char* t = (argc >= 2) ? argv[1] : "all";
+    if (strcmp(t, "all") == 0) {
+        _motion.clearEstop();
         _motion.enableAll(true);
         print("All axes enabled\r\n");
     } else {
         AxisId axis;
-        if (!parseAxis(target, axis)) { printf("Unknown axis '%s'\r\n", target); return; }
+        if (!parseAxis(t, axis)) { printf("Unknown axis '%s'\r\n", t); return; }
         _motion.enableAxis(axis, true);
-        printf("%s enabled\r\n", target);
+        printf("%s enabled\r\n", t);
     }
 }
 
 void CLI::cmdDisable(int argc, char** argv) {
-    const char* target = (argc >= 2) ? argv[1] : "all";
-    if (strcmp(target, "all") == 0) {
+    const char* t = (argc >= 2) ? argv[1] : "all";
+    if (strcmp(t, "all") == 0) {
         _motion.enableAll(false);
         print("All axes disabled\r\n");
     } else {
         AxisId axis;
-        if (!parseAxis(target, axis)) { printf("Unknown axis '%s'\r\n", target); return; }
+        if (!parseAxis(t, axis)) { printf("Unknown axis '%s'\r\n", t); return; }
         _motion.enableAxis(axis, false);
-        printf("%s disabled\r\n", target);
+        printf("%s disabled\r\n", t);
     }
 }
 
@@ -442,7 +445,6 @@ void CLI::cmdDisable(int argc, char** argv) {
 
 void CLI::cmdSet(int argc, char** argv) {
     if (argc < 2) { print("Usage: set <speed|accel|fine|limits> ...\r\n"); return; }
-
     MotionSettings s = _motion.getSettings();
     const char* param = argv[1];
 
@@ -451,39 +453,37 @@ void CLI::cmdSet(int argc, char** argv) {
         float v; if (!parseFloat(argv[2], v) || v <= 0) { print("Invalid value\r\n"); return; }
         s.maxSpeedDegS = v;
         _motion.applySettings(s);
-        printf("Max speed set to %.2f °/s\r\n", v);
+        printf("Max speed: %.1f °/s\r\n", v);
 
     } else if (strcmp(param, "accel") == 0) {
         if (argc < 3) { print("Usage: set accel <deg/s²>\r\n"); return; }
         float v; if (!parseFloat(argv[2], v) || v <= 0) { print("Invalid value\r\n"); return; }
         s.accelDegS2 = v;
         _motion.applySettings(s);
-        printf("Acceleration set to %.2f °/s²\r\n", v);
+        printf("Accel: %.1f °/s²\r\n", v);
 
     } else if (strcmp(param, "fine") == 0) {
         if (argc < 3) { print("Usage: set fine <0.0–1.0>\r\n"); return; }
         float v; if (!parseFloat(argv[2], v) || v <= 0 || v > 1.0f) { print("Invalid value\r\n"); return; }
         s.fineSpeedScale = v;
         _motion.applySettings(s);
-        printf("Fine speed scale set to %.3f\r\n", v);
+        printf("Fine scale: %.2f\r\n", v);
 
     } else if (strcmp(param, "limits") == 0) {
-        if (argc < 3) { print("Usage: set limits <pan|tilt> <min> <max>  OR  set limits on|off\r\n"); return; }
-
+        if (argc < 3) { print("Usage: set limits <pan|tilt> <min> <max>  or  set limits on|off\r\n"); return; }
         if (strcmp(argv[2], "on")  == 0) { s.softLimitsEnabled = true;  _motion.applySettings(s); print("Soft limits ON\r\n");  return; }
         if (strcmp(argv[2], "off") == 0) { s.softLimitsEnabled = false; _motion.applySettings(s); print("Soft limits OFF\r\n"); return; }
-
         if (argc < 5) { print("Usage: set limits <pan|tilt> <min> <max>\r\n"); return; }
         AxisId axis;
         if (!parseAxis(argv[2], axis)) { printf("Unknown axis '%s'\r\n", argv[2]); return; }
         float lo, hi;
         if (!parseFloat(argv[3], lo) || !parseFloat(argv[4], hi) || lo >= hi) {
-            print("Invalid limits — min must be less than max\r\n"); return;
+            print("Invalid: min must be less than max\r\n"); return;
         }
         if (axis == AxisId::PAN)  { s.panMinDeg  = lo; s.panMaxDeg  = hi; }
         else                       { s.tiltMinDeg = lo; s.tiltMaxDeg = hi; }
         _motion.applySettings(s);
-        printf("Limits for %s set to [%.1f, %.1f] °\r\n", argv[2], lo, hi);
+        printf("Limits %s: [%.1f, %.1f] °\r\n", argv[2], lo, hi);
 
     } else {
         printf("Unknown parameter '%s'\r\n", param);
@@ -495,86 +495,24 @@ void CLI::cmdSet(int argc, char** argv) {
 // -----------------------------------------------------------------------------
 
 void CLI::cmdGet(int argc, char** argv) {
-    if (argc < 2) { print("Usage: get <position|speed|accel|limits|encoder>\r\n"); return; }
-
+    if (argc < 2) { print("Usage: get <position|speed|accel|limits>\r\n"); return; }
+    MotionSettings s = _motion.getSettings();
     const char* param = argv[1];
-    MotionSettings s  = _motion.getSettings();
 
     if (strcmp(param, "position") == 0) {
         printf("pan  : %.3f °\r\ntilt : %.3f °\r\n",
                _motion.getPositionDeg(AxisId::PAN),
                _motion.getPositionDeg(AxisId::TILT));
-
     } else if (strcmp(param, "speed") == 0) {
-        printf("max speed : %.2f °/s\r\n", s.maxSpeedDegS);
-
+        printf("max speed: %.2f °/s\r\n", s.maxSpeedDegS);
     } else if (strcmp(param, "accel") == 0) {
-        printf("accel : %.2f °/s²\r\n", s.accelDegS2);
-
+        printf("accel: %.2f °/s²\r\n", s.accelDegS2);
     } else if (strcmp(param, "limits") == 0) {
-        printf("pan  : [%.1f, %.1f] °\r\ntilt : [%.1f, %.1f] °\r\nsoft limits: %s\r\n",
+        printf("pan : [%.1f, %.1f] °\r\ntilt: [%.1f, %.1f] °\r\nlimits: %s\r\n",
                s.panMinDeg, s.panMaxDeg, s.tiltMinDeg, s.tiltMaxDeg,
                s.softLimitsEnabled ? "on" : "off");
-
-    } else if (strcmp(param, "encoder") == 0) {
-        const char* axisStr = (argc >= 3) ? argv[2] : nullptr;
-        auto readOne = [&](AxisId axis, const char* name) {
-            float angle;
-            if (_motion.readEncoderAngle(axis, angle)) {
-                printf("%s encoder : %.2f °\r\n", name, angle);
-            } else {
-                printf("%s encoder : UART timeout\r\n", name);
-            }
-        };
-        if (!axisStr || strcmp(axisStr, "pan")  == 0) readOne(AxisId::PAN,  "pan");
-        if (!axisStr || strcmp(axisStr, "tilt") == 0) readOne(AxisId::TILT, "tilt");
-
     } else {
         printf("Unknown parameter '%s'\r\n", param);
-    }
-}
-
-// -----------------------------------------------------------------------------
-// ping
-// -----------------------------------------------------------------------------
-
-void CLI::cmdPing(int argc, char** argv) {
-    const char* target = (argc >= 2) ? argv[1] : "all";
-    auto pingOne = [&](AxisId axis, const char* name) {
-        printf("ping %s ... %s\r\n", name,
-               _motion.pingDriver(axis) ? "OK" : "TIMEOUT");
-    };
-    if (strcmp(target, "all") == 0) {
-        pingOne(AxisId::PAN,  "pan");
-        pingOne(AxisId::TILT, "tilt");
-    } else {
-        AxisId axis;
-        if (!parseAxis(target, axis)) { printf("Unknown axis '%s'\r\n", target); return; }
-        pingOne(axis, target);
-    }
-}
-
-// -----------------------------------------------------------------------------
-// cal
-// -----------------------------------------------------------------------------
-
-void CLI::cmdCal(int argc, char** argv) {
-    const char* target = (argc >= 2) ? argv[1] : "all";
-    auto calOne = [&](AxisId axis, const char* name) {
-        printf("Calibrating %s encoder (motor will rotate one revolution)...\r\n", name);
-        if (_motion.calibrateEncoder(axis)) {
-            printf("%s calibration complete\r\n", name);
-        } else {
-            printf("%s calibration FAILED — not supported on this axis (A4988) or UART error\r\n", name);
-        }
-    };
-    if (strcmp(target, "all") == 0) {
-        calOne(AxisId::PAN,  "pan");
-        calOne(AxisId::TILT, "tilt");
-    } else {
-        AxisId axis;
-        if (!parseAxis(target, axis)) { printf("Unknown axis '%s'\r\n", target); return; }
-        calOne(axis, target);
     }
 }
 
@@ -584,44 +522,12 @@ void CLI::cmdCal(int argc, char** argv) {
 
 void CLI::cmdSave(int /*argc*/, char** /*argv*/) {
     _motion.saveSettings();
-    print("Settings saved to flash\r\n");
+    print("Settings saved\r\n");
 }
 
 void CLI::cmdReset(int /*argc*/, char** /*argv*/) {
     _motion.resetSettings();
-    print("Settings restored to factory defaults (not saved — use 'save' to persist)\r\n");
-}
-
-void CLI::cmdDiag(int argc, char** argv) {
-    // Send a read-status frame (0x3A) to one or both drivers and dump raw bytes.
-    // This lets you verify wiring, baud rate, address, and checksum format.
-    const char* target = (argc >= 2) ? argv[1] : "all";
-
-    // Optional third argument: hex function code to test (default 0x3A status read)
-    uint8_t funcCode = 0x3A;
-    if (argc >= 3) {
-        char* end;
-        funcCode = (uint8_t)strtoul(argv[2], &end, 16);
-    }
-
-    auto diagOne = [&](AxisId axis, const char* name) {
-        printf("--- diag %s (addr 0x%02X, func 0x%02X) ---\r\n", name,
-               axis == AxisId::PAN ? MKS_PAN_ADDR : MKS_TILT_ADDR, funcCode);
-        _motion.diagAxis(axis, funcCode, 300);
-    };
-
-    if (strcmp(target, "all") == 0 || strcmp(target, "pan")  == 0) diagOne(AxisId::PAN,  "pan");
-    if (strcmp(target, "all") == 0 || strcmp(target, "tilt") == 0) diagOne(AxisId::TILT, "tilt");
-
-    print(
-        "\r\nInterpretation guide:\r\n"
-        "  Nothing received    → wrong baud rate or TX/RX wired backwards\r\n"
-        "  Addr mismatch       → driver address not 0xE0/0xE1; check onboard menu\r\n"
-        "  tCHK SUM matches    → checksum correct (expected)\r\n"
-        "  tCHK XOR matches    → checksum is XOR not SUM; firmware may differ\r\n"
-        "  RX[1] = 0x3A        → driver echoes func code (adjust readResponse)\r\n"
-        "  RX[1] = 0x01/0x02   → no func echo; response is [addr][data][chk]\r\n"
-    );
+    print("Settings reset to defaults (not saved — use 'save' to persist)\r\n");
 }
 
 void CLI::cmdReboot(int /*argc*/, char** /*argv*/) {
