@@ -103,8 +103,8 @@ sensor — on power-up, both axes start at 0° by definition.
 
 | Signal | Pi GPIO | ESP32 GPIO |
 |---|---|---|
-| TX → RX | GPIO 14 (TX) | GPIO 16 (RX) |
-| RX ← TX | GPIO 15 (RX) | GPIO 17 (TX) |
+| TX → RX | GPIO 14 (TX) | GPIO 19 (RX) |
+| RX ← TX | GPIO 15 (RX) | GPIO 21 (TX) |
 | GND | GND | GND |
 
 > Both sides are 3.3 V logic — no level shifter needed.
@@ -554,7 +554,7 @@ This clears the estop latch and re-enables both drivers.
 | Default acceleration | 360 °/s² |
 | Default fine scale | 0.20× (20% of max speed) |
 | CLI baud rate | 115200 (USB and Pi UART) |
-| Pi UART pins | ESP32 GPIO16 (RX) / GPIO17 (TX) |
+| Pi UART pins | ESP32 GPIO19 (RX) / GPIO21 (TX) |
 | Pi GPIO pins | GPIO14 (TX) / GPIO15 (RX) |
 | MCU | ESP32 WROOM-32 |
 | Flash settings | NVS (non-volatile) — persisted with `save` |

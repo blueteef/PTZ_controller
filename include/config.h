@@ -23,7 +23,7 @@
 // Stepper direction invert — set true if axis moves the wrong way.
 // Flips DIR logic in FastAccelStepper; no rewiring needed.
 #define PAN_DIR_INVERT   true
-#define TILT_DIR_INVERT  false
+#define TILT_DIR_INVERT  true
 
 // A4988 EN is active-LOW: drive LOW to enable, HIGH to disable.
 // EN pins are managed directly with digitalWrite — not via FastAccelStepper.
@@ -33,14 +33,14 @@
 
 // -----------------------------------------------------------------------------
 // Pi UART (Serial2) — direct GPIO link, no USB cable needed
-//   Pi GPIO14 (TX) → ESP32 GPIO16 (RX)
-//   Pi GPIO15 (RX) ← ESP32 GPIO17 (TX)
+//   Pi GPIO14 (TX) → ESP32 GPIO19 (RX)
+//   Pi GPIO15 (RX) ← ESP32 GPIO21 (TX)
 //   Pi GND         → ESP32 GND        (3.3 V logic on both sides, no shifter)
 // On Pi: enable serial in raspi-config → Interface Options → Serial
 //   disable login shell on serial, enable serial port hardware → /dev/serial0
 // -----------------------------------------------------------------------------
-#define PI_UART_RX_PIN   16
-#define PI_UART_TX_PIN   17
+#define PI_UART_RX_PIN   19
+#define PI_UART_TX_PIN   21
 #define PI_BAUD_RATE     115200
 
 // UART0 (Serial/USB) — kept for development and local debugging
