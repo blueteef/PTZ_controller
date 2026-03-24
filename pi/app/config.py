@@ -31,7 +31,7 @@ MODEL_YOLO_PATH    = str(MODEL_DIR / "yolov8n.pt")
 # ---------------------------------------------------------------------------
 # ESP32 serial bridge
 # ---------------------------------------------------------------------------
-SERIAL_PORT        = os.getenv("SERIAL_PORT", "/dev/ttyUSB0")
+SERIAL_PORT        = os.getenv("SERIAL_PORT", "/dev/serial0")
 SERIAL_BAUD        = int(os.getenv("SERIAL_BAUD", "115200"))
 SERIAL_TIMEOUT     = 0.1   # seconds — read timeout per call
 SERIAL_RECONNECT_S = 2.0   # wait between reconnect attempts

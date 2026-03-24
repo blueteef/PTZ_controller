@@ -6,12 +6,18 @@
 
 ---
 
-## Quick Start — Pi Server
+## Quick Start — Common Commands
 
 After SSH into the Pi:
 
 ```bash
+# Pull latest code
+git pull
+
+# Activate virtual environment
 source ~/venv/bin/activate
+
+# Start the server
 cd ~/PTZ_controller/pi
 uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
