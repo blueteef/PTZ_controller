@@ -63,6 +63,7 @@ private:
     void readPiSerial();  // Pi UART — no echo, no prompt
     void dispatch(char* line);
     void printPrompt();
+    void printToPi(const char* msg);  // Serial2-only — for query() responses
 
     void cmdHelp    (int argc, char** argv);
     void cmdVersion (int argc, char** argv);

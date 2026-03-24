@@ -30,6 +30,12 @@ bool CLI::begin(uint32_t baud) {
 void CLI::print(const char* msg) {
     xSemaphoreTake(_txMutex, portMAX_DELAY);
     Serial.print(msg);
+    xSemaphoreGive(_txMutex);
+}
+
+// Pi-only print — used for query responses that the Pi reads back directly.
+void CLI::printToPi(const char* msg) {
+    xSemaphoreTake(_txMutex, portMAX_DELAY);
     Serial2.print(msg);
     xSemaphoreGive(_txMutex);
 }
@@ -361,8 +367,6 @@ void CLI::cmdVel(int argc, char** argv) {
         if (!parseAxis(t, axis)) { printf("Unknown axis '%s'\r\n", t); return; }
         _motion.setVelocity(axis, degS);
     }
-    // Brief confirmation — remove once tracking loop is active (high-rate callers don't want replies).
-    printf("vel %s %.1f °/s\r\n", argv[1], degS);
 }
 
 // -----------------------------------------------------------------------------
@@ -500,9 +504,12 @@ void CLI::cmdGet(int argc, char** argv) {
     const char* param = argv[1];
 
     if (strcmp(param, "position") == 0) {
-        printf("pan  : %.3f °\r\ntilt : %.3f °\r\n",
-               _motion.getPositionDeg(AxisId::PAN),
-               _motion.getPositionDeg(AxisId::TILT));
+        char posBuf[64];
+        snprintf(posBuf, sizeof(posBuf), "pan  : %.3f °\r\ntilt : %.3f °\r\n",
+                 _motion.getPositionDeg(AxisId::PAN),
+                 _motion.getPositionDeg(AxisId::TILT));
+        print(posBuf);      // USB
+        printToPi(posBuf);  // Pi UART — needed for bridge.query("get position")
     } else if (strcmp(param, "speed") == 0) {
         printf("max speed: %.2f °/s\r\n", s.maxSpeedDegS);
     } else if (strcmp(param, "accel") == 0) {

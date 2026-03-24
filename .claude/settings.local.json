@@ -24,7 +24,8 @@
       "Bash(/c/Users/snyder/.platformio/packages/toolchain-xtensa-esp32/bin/xtensa-esp32-elf-g++.exe -v -c /tmp/test.cpp -o /tmp/test.o)",
       "Bash(cd \"C:/Users/snyder/Documents/PlatformIO/Projects/PTZ_controller\" && C:/.pio/penv/Scripts/pio.exe run -e esp32dev 2>&1)",
       "Bash(cd \"C:/Users/snyder/Documents/PlatformIO/Projects/PTZ_controller\" && C:/.pio/penv/Scripts/pio.exe run -e esp32dev 2>&1 | tail -20)",
-      "Bash(cd \"C:/Users/snyder/Documents/PlatformIO/Projects/PTZ_controller\" && C:/.pio/penv/Scripts/pio.exe run -e esp32dev 2>&1 | tail -12)"
+      "Bash(cd \"C:/Users/snyder/Documents/PlatformIO/Projects/PTZ_controller\" && C:/.pio/penv/Scripts/pio.exe run -e esp32dev 2>&1 | tail -12)",
+      "Bash(~/.platformio/penv/bin/pio run:*)"
     ]
   }
 }

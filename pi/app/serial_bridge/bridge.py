@@ -148,9 +148,10 @@ class ESPBridge:
                 try:
                     self._port.write(cmd.encode())
                     self._port.flush()
-                    # Drain echo and prompt (non-blocking read with short timeout)
+                    # Drain any echo or prompt bytes (vel sends nothing back now)
                     time.sleep(0.008)
-                    self._port.read(self._port.in_waiting or 1)
+                    if self._port.in_waiting:
+                        self._port.read(self._port.in_waiting)
                 except serial.SerialException as e:
                     log.warning("write failed: %s", e)
                     self._mark_disconnected()
