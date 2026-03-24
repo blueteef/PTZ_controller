@@ -22,7 +22,7 @@
 
 // Stepper direction invert — set true if axis moves the wrong way.
 // Flips DIR logic in FastAccelStepper; no rewiring needed.
-#define PAN_DIR_INVERT   false
+#define PAN_DIR_INVERT   true
 #define TILT_DIR_INVERT  false
 
 // A4988 EN is active-LOW: drive LOW to enable, HIGH to disable.
