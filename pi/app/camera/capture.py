@@ -46,9 +46,18 @@ class CameraCapture:
                 controls={"FrameRate": config.CAMERA_FPS},
             )
             self._cam.configure(cfg)
+            # Apply image quality controls — tuned for IMX219 NoIR face detection.
+            self._cam.set_controls({
+                "Sharpness":        config.CAMERA_SHARPNESS,
+                "Contrast":         config.CAMERA_CONTRAST,
+                "NoiseReductionMode": config.CAMERA_NOISE_REDUCTION,
+                "AwbMode":          config.CAMERA_AWB_MODE,
+                "AeMeteringMode":   config.CAMERA_AE_METERING_MODE,
+            })
             self._cam.start()
-            log.info("Camera started at %dx%d @ %dfps",
-                     config.CAMERA_WIDTH, config.CAMERA_HEIGHT, config.CAMERA_FPS)
+            log.info("Camera started at %dx%d @ %dfps  sharpness=%.1f contrast=%.1f",
+                     config.CAMERA_WIDTH, config.CAMERA_HEIGHT, config.CAMERA_FPS,
+                     config.CAMERA_SHARPNESS, config.CAMERA_CONTRAST)
         else:
             log.warning("Running without camera — blank frames")
         self._thread.start()

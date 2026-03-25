@@ -53,6 +53,18 @@ CAMERA_FOV_V_DEG = 28.0   # vertical degrees
 # 0=none, 1=90°CW, 2=180°(upside-down), 3=90°CCW
 CAMERA_ROTATION = int(os.getenv("CAMERA_ROTATION", "2"))
 
+# IMX219 NoIR image tuning — improves face detection quality.
+# Sharpness 0-16 (default 1.0): higher = crisper edges, helps MediaPipe find faces.
+# Contrast  0-32 (default 1.0): slight boost separates face features.
+# NoiseReductionMode: 0=off 1=fast 2=high-quality (NoIR is noisier than regular cam).
+# AwbMode: 0=auto 1=incandescent 2=tungsten 3=fluorescent 4=indoor 5=daylight 6=cloudy
+# AeMeteringMode: 0=centre-weighted 1=spot 2=matrix (centre helps when face is in frame)
+CAMERA_SHARPNESS          = float(os.getenv("CAMERA_SHARPNESS",    "2.0"))
+CAMERA_CONTRAST           = float(os.getenv("CAMERA_CONTRAST",     "1.2"))
+CAMERA_NOISE_REDUCTION    = int(os.getenv("CAMERA_NOISE_REDUCTION", "2"))
+CAMERA_AWB_MODE           = int(os.getenv("CAMERA_AWB_MODE",        "0"))
+CAMERA_AE_METERING_MODE   = int(os.getenv("CAMERA_AE_METERING_MODE","0"))
+
 # ---------------------------------------------------------------------------
 # MJPEG stream
 # ---------------------------------------------------------------------------

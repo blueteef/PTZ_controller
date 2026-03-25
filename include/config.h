@@ -22,7 +22,7 @@
 
 // Stepper direction invert — set true if axis moves the wrong way.
 // Flips DIR logic in FastAccelStepper; no rewiring needed.
-#define PAN_DIR_INVERT   false
+#define PAN_DIR_INVERT   true
 #define TILT_DIR_INVERT  true
 
 // A4988 EN is active-LOW: drive LOW to enable, HIGH to disable.
@@ -63,7 +63,7 @@
 // Motion defaults  — conservative starting point; tune with 'set speed/accel'
 // -----------------------------------------------------------------------------
 #define DEFAULT_MAX_SPEED_DEG_S    45.0f   // output-shaft deg/s
-#define DEFAULT_ACCEL_DEG_S2      160.0f   // output-shaft deg/s²
+#define DEFAULT_ACCEL_DEG_S2      190.0f   // output-shaft deg/s²
 #define DEFAULT_FINE_SPEED_SCALE    0.2f   // 'jog fine' multiplier
 
 // Minimum speed threshold below which setVelocity issues a stop instead.
