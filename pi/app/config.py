@@ -86,9 +86,9 @@ JOYSTICK_DEFAULT_SPEED = float(os.getenv("JOYSTICK_DEFAULT_SPEED", "45.0"))
 # ---------------------------------------------------------------------------
 # Tracking PID
 # ---------------------------------------------------------------------------
-PID_KP             = 0.08    # proportional gain
-PID_KI             = 0.001   # integral gain
-PID_KD             = 0.01    # derivative gain
+PID_KP             = 2.0     # proportional gain  (error in degrees → deg/s)
+PID_KI             = 0.01    # integral gain
+PID_KD             = 0.05    # derivative gain
 PID_MAX_VEL_DEG_S  = float(os.getenv("PID_MAX_VEL_DEG_S", "45.0"))  # tracking speed cap
 TRACKING_DEADBAND_PX = 15    # pixel radius around center — no correction inside
 

@@ -93,7 +93,12 @@ class VisionPipeline:
             try:
                 detections = detector.detect(frame)
             except Exception as e:
-                log.error("Detection error: %s", e)
+                log.error("Detection error (%s) — resetting to null detector: %s",
+                          type(e).__name__, e)
+                with self._detector_lock:
+                    self._detector = NullDetector()
+                state.detection_mode = "none"
+                state.tracking_enabled = False
                 detections = []
 
             annotated = _draw_boxes(frame, detections)

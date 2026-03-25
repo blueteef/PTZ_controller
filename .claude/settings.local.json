@@ -25,7 +25,8 @@
       "Bash(cd \"C:/Users/snyder/Documents/PlatformIO/Projects/PTZ_controller\" && C:/.pio/penv/Scripts/pio.exe run -e esp32dev 2>&1)",
       "Bash(cd \"C:/Users/snyder/Documents/PlatformIO/Projects/PTZ_controller\" && C:/.pio/penv/Scripts/pio.exe run -e esp32dev 2>&1 | tail -20)",
       "Bash(cd \"C:/Users/snyder/Documents/PlatformIO/Projects/PTZ_controller\" && C:/.pio/penv/Scripts/pio.exe run -e esp32dev 2>&1 | tail -12)",
-      "Bash(~/.platformio/penv/bin/pio run:*)"
+      "Bash(~/.platformio/penv/bin/pio run:*)",
+      "Bash(python:*)"
     ]
   }
 }
