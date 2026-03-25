@@ -63,7 +63,8 @@ MJPEG_TARGET_FPS   = CAMERA_FPS   # stream pacing
 # Vision / detection
 # ---------------------------------------------------------------------------
 YOLO_CONFIDENCE    = float(os.getenv("YOLO_CONFIDENCE", "0.45"))
-FACE_MIN_CONFIDENCE = 0.6   # MediaPipe face detection threshold
+FACE_MIN_CONFIDENCE  = float(os.getenv("FACE_MIN_CONFIDENCE", "0.4"))  # MediaPipe threshold
+FACE_MODEL_SELECTION = int(os.getenv("FACE_MODEL_SELECTION", "1"))     # 0=short range (<2m), 1=full range
 
 # ---------------------------------------------------------------------------
 # Face recognition

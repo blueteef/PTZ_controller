@@ -33,7 +33,7 @@ class FaceDetector:
             try:
                 import mediapipe as mp
                 self._detector = mp.solutions.face_detection.FaceDetection(
-                    model_selection=0,
+                    model_selection=config.FACE_MODEL_SELECTION,
                     min_detection_confidence=config.FACE_MIN_CONFIDENCE,
                 )
                 log.info("MediaPipe FaceDetection initialized")

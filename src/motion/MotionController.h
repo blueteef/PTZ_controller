@@ -70,6 +70,7 @@ private:
     float                  _cachedPosDeg[2] = {0.0f, 0.0f};
     int8_t                 _lastDir[2]      = {0, 0};  // -1, 0, +1 per axis
     bool                   _estop           = false;
+    volatile uint32_t      _lastVelCmdMs    = 0;       // watchdog timestamp
     Preferences            _prefs;
     SemaphoreHandle_t      _mutex           = nullptr;
 

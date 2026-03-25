@@ -116,6 +116,7 @@ void MotionController::enableAll(bool en) {
 void MotionController::setVelocity(AxisId axis, float degS) {
     if (_estop) return;
     int idx = (int)axis;
+    _lastVelCmdMs = millis();  // reset watchdog on every vel command
 
     xSemaphoreTake(_mutex, portMAX_DELAY);
 
@@ -299,6 +300,21 @@ void MotionController::motionTask(void* param) {
                     mc->_lastDir[i] = 0;
                     xSemaphoreGive(mc->_mutex);
                 }
+            }
+        }
+
+        // Velocity watchdog — stop all axes if Pi goes silent while motors run.
+        // Catches dropped stop commands; fires after VEL_WATCHDOG_MS of no vel cmds.
+        if (!mc->_estop && mc->_lastVelCmdMs > 0) {
+            bool anyRunning = mc->_stepper[0]->isRunning() || mc->_stepper[1]->isRunning();
+            if (anyRunning && (millis() - mc->_lastVelCmdMs) > VEL_WATCHDOG_MS) {
+                xSemaphoreTake(mc->_mutex, portMAX_DELAY);
+                mc->_stepper[0]->stopMove();
+                mc->_stepper[1]->stopMove();
+                mc->_lastDir[0] = 0;
+                mc->_lastDir[1] = 0;
+                xSemaphoreGive(mc->_mutex);
+                mc->_lastVelCmdMs = 0;  // suppress until next vel command
             }
         }
 

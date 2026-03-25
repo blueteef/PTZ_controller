@@ -22,7 +22,7 @@
 
 // Stepper direction invert — set true if axis moves the wrong way.
 // Flips DIR logic in FastAccelStepper; no rewiring needed.
-#define PAN_DIR_INVERT   true
+#define PAN_DIR_INVERT   false
 #define TILT_DIR_INVERT  true
 
 // A4988 EN is active-LOW: drive LOW to enable, HIGH to disable.
@@ -62,8 +62,8 @@
 // -----------------------------------------------------------------------------
 // Motion defaults  — conservative starting point; tune with 'set speed/accel'
 // -----------------------------------------------------------------------------
-#define DEFAULT_MAX_SPEED_DEG_S    90.0f   // output-shaft deg/s
-#define DEFAULT_ACCEL_DEG_S2      120.0f   // output-shaft deg/s²
+#define DEFAULT_MAX_SPEED_DEG_S    45.0f   // output-shaft deg/s
+#define DEFAULT_ACCEL_DEG_S2      160.0f   // output-shaft deg/s²
 #define DEFAULT_FINE_SPEED_SCALE    0.2f   // 'jog fine' multiplier
 
 // Minimum speed threshold below which setVelocity issues a stop instead.
@@ -97,6 +97,10 @@
 
 // Jog mode: if no directional key arrives within this window, stop the axis.
 #define JOG_KEY_TIMEOUT_MS   150
+
+// Velocity watchdog: if no vel command arrives within this window while an axis
+// is running, stop all axes.  Catches dropped stop commands from the Pi.
+#define VEL_WATCHDOG_MS      110
 
 // -----------------------------------------------------------------------------
 // System
