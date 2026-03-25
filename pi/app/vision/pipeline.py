@@ -7,6 +7,10 @@ draws bounding boxes, writes annotated frame + detections back to AppState.
 The pipeline thread runs independently of the camera and stream — if
 detection is slow, the stream stays smooth (it reads from current_frame
 as fallback) and detections are just stale by a few frames.
+
+Performance knobs (config.py / .env):
+  DET_SCALE  — resize frame to this fraction before detection (0.5 = half res)
+  DET_SKIP   — only run detector every N frames; reuse boxes in between
 """
 
 from __future__ import annotations
@@ -19,6 +23,7 @@ from typing import Union
 import cv2
 import numpy as np
 
+from app import config
 from app.state import state, Detection
 from app.vision.detector_null import NullDetector
 from app.vision.detector_face import FaceDetector
@@ -78,6 +83,9 @@ class VisionPipeline:
     # ------------------------------------------------------------------
 
     def _run(self) -> None:
+        frame_count = 0
+        last_detections: list[Detection] = []
+
         while not self._stop_event.is_set():
             # Wait for a new frame (up to 0.1s to allow stop checks)
             state.new_frame_event.wait(timeout=0.1)
@@ -87,11 +95,30 @@ class VisionPipeline:
             if frame is None:
                 continue
 
+            frame_count += 1
+
+            # Frame skipping: reuse last detection boxes on skipped frames
+            if config.DET_SKIP > 1 and frame_count % config.DET_SKIP != 0:
+                annotated = _draw_boxes(frame, last_detections)
+                state.set_annotated(annotated, last_detections)
+                _feed_tracker(frame, last_detections)
+                continue
+
             with self._detector_lock:
                 detector = self._detector
 
+            # Downscale frame for faster detection
+            det_frame, scale_x, scale_y = _maybe_downscale(frame)
+
             try:
-                detections = detector.detect(frame)
+                detections = detector.detect(det_frame)
+                # Scale bounding boxes back to original resolution
+                if scale_x != 1.0 or scale_y != 1.0:
+                    for d in detections:
+                        d.x = int(d.x * scale_x)
+                        d.y = int(d.y * scale_y)
+                        d.w = int(d.w * scale_x)
+                        d.h = int(d.h * scale_y)
             except Exception as e:
                 log.error("Detection error (%s) — resetting to null detector: %s",
                           type(e).__name__, e)
@@ -101,14 +128,29 @@ class VisionPipeline:
                 state.tracking_enabled = False
                 detections = []
 
+            last_detections = detections
             annotated = _draw_boxes(frame, detections)
             state.set_annotated(annotated, detections)
+            _feed_tracker(frame, detections)
 
-            # Feed detections to tracker (no-op when tracking disabled)
-            import app.vision.tracker as _t
-            if _t.tracker is not None and state.tracking_enabled:
-                h, w = frame.shape[:2]
-                _t.tracker.update(detections, frame_w=w, frame_h=h)
+
+def _maybe_downscale(frame: np.ndarray) -> tuple[np.ndarray, float, float]:
+    """Return (det_frame, scale_x, scale_y).  scale_* maps det_frame coords → frame coords."""
+    scale = config.DET_SCALE
+    if scale >= 1.0:
+        return frame, 1.0, 1.0
+    orig_h, orig_w = frame.shape[:2]
+    det_w = max(1, int(orig_w * scale))
+    det_h = max(1, int(orig_h * scale))
+    det_frame = cv2.resize(frame, (det_w, det_h))
+    return det_frame, orig_w / det_w, orig_h / det_h
+
+
+def _feed_tracker(frame: np.ndarray, detections: list[Detection]) -> None:
+    import app.vision.tracker as _t
+    if _t.tracker is not None and state.tracking_enabled:
+        h, w = frame.shape[:2]
+        _t.tracker.update(detections, frame_w=w, frame_h=h)
 
 
 def _draw_boxes(frame: np.ndarray, detections: list[Detection]) -> np.ndarray:

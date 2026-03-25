@@ -25,8 +25,9 @@ MODEL_DIR = PI_DIR / "models"
 DATA_DIR.mkdir(exist_ok=True)
 MODEL_DIR.mkdir(exist_ok=True)
 
-DB_PATH            = str(DATA_DIR / "faces.db")
-MODEL_YOLO_PATH    = str(MODEL_DIR / "yolov8n.pt")
+DB_PATH              = str(DATA_DIR / "faces.db")
+MODEL_YOLO_PATH      = str(MODEL_DIR / "yolov8n.pt")
+MODEL_OBJECT_PATH    = str(MODEL_DIR / "efficientdet_lite0_int8.tflite")
 
 # ---------------------------------------------------------------------------
 # ESP32 serial bridge
@@ -77,6 +78,13 @@ MJPEG_TARGET_FPS   = CAMERA_FPS   # stream pacing
 YOLO_CONFIDENCE    = float(os.getenv("YOLO_CONFIDENCE", "0.45"))
 FACE_MIN_CONFIDENCE  = float(os.getenv("FACE_MIN_CONFIDENCE", "0.4"))  # MediaPipe threshold
 FACE_MODEL_SELECTION = int(os.getenv("FACE_MODEL_SELECTION", "1"))     # 0=short range (<2m), 1=full range
+
+# Detection performance — reduce CPU load on Pi
+# DET_SCALE: resize input frame to this fraction before running detector (0.5 = half res).
+#            Bounding boxes are automatically scaled back to full resolution.
+# DET_SKIP:  only run detector every N frames; reuse previous boxes in between (1 = every frame).
+DET_SCALE = float(os.getenv("DET_SCALE", "0.5"))
+DET_SKIP  = int(os.getenv("DET_SKIP",   "2"))
 
 # ---------------------------------------------------------------------------
 # Face recognition
