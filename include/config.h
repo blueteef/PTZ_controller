@@ -42,7 +42,7 @@
 // -----------------------------------------------------------------------------
 #define PI_UART_RX_PIN   19
 #define PI_UART_TX_PIN   21
-#define PI_BAUD_RATE     115200
+#define PI_BAUD_RATE     57600
 
 // UART0 (Serial/USB) — kept for development and local debugging
 
