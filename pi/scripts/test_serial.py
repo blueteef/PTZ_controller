@@ -22,7 +22,7 @@ except ImportError:
 
 def main():
     parser = argparse.ArgumentParser(description="ESP32 serial bridge smoke test")
-    parser.add_argument("--port", default="/dev/ttyUSB0")
+    parser.add_argument("--port", default="/dev/serial0")
     parser.add_argument("--baud", type=int, default=115200)
     args = parser.parse_args()
 
