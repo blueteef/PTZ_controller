@@ -44,27 +44,35 @@ CAMERA_WIDTH   = int(os.getenv("CAMERA_WIDTH",  "1280"))
 CAMERA_HEIGHT  = int(os.getenv("CAMERA_HEIGHT", "720"))
 CAMERA_FPS     = int(os.getenv("CAMERA_FPS",    "30"))
 
-# IMX219 (Pi Camera Module 2 / NoIR v2) field of view at 1280x720 crop mode.
-# Full-sensor H FoV ~62°; at 1280x720 crop it's approximately 47°H x 28°V.
-# These are estimates — tune empirically by pointing at a target at known angles.
-CAMERA_FOV_H_DEG = 47.0   # horizontal degrees
-CAMERA_FOV_V_DEG = 28.0   # vertical degrees
+# IMX708 (Arducam/Pi Camera Module 3) field of view.
+# Full-sensor binned mode (~66°H x 41°V) — applies at all output resolutions.
+# Tune empirically by pointing at a target at known angles.
+CAMERA_FOV_H_DEG = 66.0   # horizontal degrees
+CAMERA_FOV_V_DEG = 41.0   # vertical degrees
 
 # Camera orientation correction — set based on physical mount.
 # 0=none, 1=90°CW, 2=180°(upside-down), 3=90°CCW
-CAMERA_ROTATION = int(os.getenv("CAMERA_ROTATION", "2"))
+CAMERA_ROTATION = int(os.getenv("CAMERA_ROTATION", "0"))
 
-# IMX219 NoIR image tuning — improves face detection quality.
-# Sharpness 0-16 (default 1.0): higher = crisper edges, helps MediaPipe find faces.
-# Contrast  0-32 (default 1.0): slight boost separates face features.
-# NoiseReductionMode: 0=off 1=fast 2=high-quality (NoIR is noisier than regular cam).
+# Image quality tuning.
+# Sharpness 0-16 (default 1.0): higher = crisper edges, helps detection.
+# Contrast  0-32 (default 1.0): slight boost separates features.
+# NoiseReductionMode: 0=off 1=fast 2=high-quality
 # AwbMode: 0=auto 1=incandescent 2=tungsten 3=fluorescent 4=indoor 5=daylight 6=cloudy
-# AeMeteringMode: 0=centre-weighted 1=spot 2=matrix (centre helps when face is in frame)
-CAMERA_SHARPNESS          = float(os.getenv("CAMERA_SHARPNESS",    "2.0"))
-CAMERA_CONTRAST           = float(os.getenv("CAMERA_CONTRAST",     "1.2"))
-CAMERA_NOISE_REDUCTION    = int(os.getenv("CAMERA_NOISE_REDUCTION", "2"))
+# AeMeteringMode: 0=centre-weighted 1=spot 2=matrix
+CAMERA_SHARPNESS          = float(os.getenv("CAMERA_SHARPNESS",    "1.5"))
+CAMERA_CONTRAST           = float(os.getenv("CAMERA_CONTRAST",     "1.1"))
+CAMERA_NOISE_REDUCTION    = int(os.getenv("CAMERA_NOISE_REDUCTION", "1"))
 CAMERA_AWB_MODE           = int(os.getenv("CAMERA_AWB_MODE",        "0"))
 CAMERA_AE_METERING_MODE   = int(os.getenv("CAMERA_AE_METERING_MODE","0"))
+
+# Autofocus — IMX708 only (Camera Module 3 / Arducam 12MP AF).
+# AfMode: 0=manual  1=auto (trigger on demand)  2=continuous
+# AfSpeed: 0=normal  1=fast
+# AfRange: 0=normal (0.1m–inf)  1=macro  2=full
+CAMERA_AF_MODE  = int(os.getenv("CAMERA_AF_MODE",  "2"))   # continuous
+CAMERA_AF_SPEED = int(os.getenv("CAMERA_AF_SPEED", "1"))   # fast
+CAMERA_AF_RANGE = int(os.getenv("CAMERA_AF_RANGE", "0"))   # normal
 
 # ---------------------------------------------------------------------------
 # MJPEG stream

@@ -47,15 +47,18 @@ class CameraCapture:
                     controls={"FrameRate": config.CAMERA_FPS},
                 )
                 self._cam.configure(cfg)
-                # Apply image quality controls — tuned for IMX219 NoIR face detection.
-                self._cam.set_controls({
-                    "Sharpness":        config.CAMERA_SHARPNESS,
-                    "Contrast":         config.CAMERA_CONTRAST,
-                    "NoiseReductionMode": config.CAMERA_NOISE_REDUCTION,
-                    "AwbMode":          config.CAMERA_AWB_MODE,
-                    "AeMeteringMode":   config.CAMERA_AE_METERING_MODE,
-                })
                 self._cam.start()
+                # Apply image quality and autofocus controls after start.
+                self._cam.set_controls({
+                    "Sharpness":          config.CAMERA_SHARPNESS,
+                    "Contrast":           config.CAMERA_CONTRAST,
+                    "NoiseReductionMode": config.CAMERA_NOISE_REDUCTION,
+                    "AwbMode":            config.CAMERA_AWB_MODE,
+                    "AeMeteringMode":     config.CAMERA_AE_METERING_MODE,
+                    "AfMode":             config.CAMERA_AF_MODE,
+                    "AfSpeed":            config.CAMERA_AF_SPEED,
+                    "AfRange":            config.CAMERA_AF_RANGE,
+                })
                 log.info("Camera started at %dx%d @ %dfps  sharpness=%.1f contrast=%.1f",
                          config.CAMERA_WIDTH, config.CAMERA_HEIGHT, config.CAMERA_FPS,
                          config.CAMERA_SHARPNESS, config.CAMERA_CONTRAST)
