@@ -10,15 +10,16 @@
 // -----------------------------------------------------------------------------
 #define STATUS_LED_PIN   2
 
-// Pan axis
-#define PAN_STEP_PIN     32
-#define PAN_DIR_PIN      33
-#define PAN_EN_PIN       25
-
 // Tilt axis
-#define TILT_STEP_PIN    26
-#define TILT_DIR_PIN     27
-#define TILT_EN_PIN      14
+#define TILT_DIR_PIN     32
+#define TILT_STEP_PIN    33
+#define TILT_EN_PIN      25
+
+// Pan axis
+#define PAN_DIR_PIN      26
+#define PAN_STEP_PIN     27
+#define PAN_EN_PIN       14
+
 
 // Stepper direction invert — set true if axis moves the wrong way.
 // Flips DIR logic in FastAccelStepper; no rewiring needed.
