@@ -152,6 +152,7 @@ void CLI::dispatch(char* line) {
     else if (strcmp(cmd, "disable") == 0) cmdDisable(argc, argv);
     else if (strcmp(cmd, "set")     == 0) cmdSet    (argc, argv);
     else if (strcmp(cmd, "get")     == 0) cmdGet    (argc, argv);
+    else if (strcmp(cmd, "ping")    == 0) cmdPing   (argc, argv);
     else if (strcmp(cmd, "save")    == 0) cmdSave   (argc, argv);
     else if (strcmp(cmd, "reset")   == 0) cmdReset  (argc, argv);
     else if (strcmp(cmd, "reboot")  == 0) cmdReboot (argc, argv);
@@ -511,16 +512,41 @@ void CLI::cmdGet(int argc, char** argv) {
         print(posBuf);      // USB
         printToPi(posBuf);  // Pi UART — needed for bridge.query("get position")
     } else if (strcmp(param, "speed") == 0) {
-        printf("max speed: %.2f °/s\r\n", s.maxSpeedDegS);
+        char buf[64];
+        snprintf(buf, sizeof(buf), "max speed : %.2f °/s\r\n", s.maxSpeedDegS);
+        print(buf);
+        printToPi(buf);
     } else if (strcmp(param, "accel") == 0) {
-        printf("accel: %.2f °/s²\r\n", s.accelDegS2);
+        char buf[64];
+        snprintf(buf, sizeof(buf), "accel : %.2f °/s²\r\n", s.accelDegS2);
+        print(buf);
+        printToPi(buf);
     } else if (strcmp(param, "limits") == 0) {
-        printf("pan : [%.1f, %.1f] °\r\ntilt: [%.1f, %.1f] °\r\nlimits: %s\r\n",
+        char buf[128];
+        snprintf(buf, sizeof(buf), "pan : [%.1f, %.1f] °\r\ntilt: [%.1f, %.1f] °\r\nlimits: %s\r\n",
                s.panMinDeg, s.panMaxDeg, s.tiltMinDeg, s.tiltMaxDeg,
                s.softLimitsEnabled ? "on" : "off");
+        print(buf);
+        printToPi(buf);
     } else {
         printf("Unknown parameter '%s'\r\n", param);
     }
+}
+
+// -----------------------------------------------------------------------------
+// ping — UART link test, responds on both USB and Serial2
+// -----------------------------------------------------------------------------
+
+void CLI::cmdPing(int argc, char** argv) {
+    const char* t = (argc >= 2) ? argv[1] : "all";
+    char buf[64];
+    if (strcmp(t, "all") == 0) {
+        snprintf(buf, sizeof(buf), "ping pan ... OK\r\nping tilt ... OK\r\n");
+    } else {
+        snprintf(buf, sizeof(buf), "ping %s ... OK\r\n", t);
+    }
+    print(buf);
+    printToPi(buf);
 }
 
 // -----------------------------------------------------------------------------

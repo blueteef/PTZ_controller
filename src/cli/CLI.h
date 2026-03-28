@@ -77,6 +77,7 @@ private:
     void cmdDisable (int argc, char** argv);
     void cmdSet     (int argc, char** argv);
     void cmdGet     (int argc, char** argv);
+    void cmdPing    (int argc, char** argv);
     void cmdSave    (int argc, char** argv);
     void cmdReset   (int argc, char** argv);
     void cmdReboot  (int argc, char** argv);
