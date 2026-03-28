@@ -40,24 +40,28 @@ class CameraCapture:
     def start(self) -> None:
         self._stop_event.clear()
         if _PICAMERA_AVAILABLE:
-            self._cam = Picamera2()
-            cfg = self._cam.create_video_configuration(
-                main={"size": (config.CAMERA_WIDTH, config.CAMERA_HEIGHT), "format": "RGB888"},
-                controls={"FrameRate": config.CAMERA_FPS},
-            )
-            self._cam.configure(cfg)
-            # Apply image quality controls — tuned for IMX219 NoIR face detection.
-            self._cam.set_controls({
-                "Sharpness":        config.CAMERA_SHARPNESS,
-                "Contrast":         config.CAMERA_CONTRAST,
-                "NoiseReductionMode": config.CAMERA_NOISE_REDUCTION,
-                "AwbMode":          config.CAMERA_AWB_MODE,
-                "AeMeteringMode":   config.CAMERA_AE_METERING_MODE,
-            })
-            self._cam.start()
-            log.info("Camera started at %dx%d @ %dfps  sharpness=%.1f contrast=%.1f",
-                     config.CAMERA_WIDTH, config.CAMERA_HEIGHT, config.CAMERA_FPS,
-                     config.CAMERA_SHARPNESS, config.CAMERA_CONTRAST)
+            try:
+                self._cam = Picamera2()
+                cfg = self._cam.create_video_configuration(
+                    main={"size": (config.CAMERA_WIDTH, config.CAMERA_HEIGHT), "format": "RGB888"},
+                    controls={"FrameRate": config.CAMERA_FPS},
+                )
+                self._cam.configure(cfg)
+                # Apply image quality controls — tuned for IMX219 NoIR face detection.
+                self._cam.set_controls({
+                    "Sharpness":        config.CAMERA_SHARPNESS,
+                    "Contrast":         config.CAMERA_CONTRAST,
+                    "NoiseReductionMode": config.CAMERA_NOISE_REDUCTION,
+                    "AwbMode":          config.CAMERA_AWB_MODE,
+                    "AeMeteringMode":   config.CAMERA_AE_METERING_MODE,
+                })
+                self._cam.start()
+                log.info("Camera started at %dx%d @ %dfps  sharpness=%.1f contrast=%.1f",
+                         config.CAMERA_WIDTH, config.CAMERA_HEIGHT, config.CAMERA_FPS,
+                         config.CAMERA_SHARPNESS, config.CAMERA_CONTRAST)
+            except Exception as e:
+                log.warning("Camera init failed (%s) — running with blank frames", e)
+                self._cam = None
         else:
             log.warning("Running without camera — blank frames")
         self._thread.start()
