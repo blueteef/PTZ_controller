@@ -50,6 +50,7 @@ void setup() {
 
     // Pi hardware UART — same CLI protocol as USB, no cable needed.
     Serial2.begin(PI_BAUD_RATE, SERIAL_8N1, PI_UART_RX_PIN, PI_UART_TX_PIN);
+    Serial2.printf("\r\nPTZ UART OK %d baud\r\n", PI_BAUD_RATE);
     Serial.println("[BOOT] Pi UART OK (GPIO19 RX, GPIO21 TX)");
 
     gCLI = new CLI(gMotion);
