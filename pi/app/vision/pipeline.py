@@ -110,8 +110,9 @@ class VisionPipeline:
             with self._detector_lock:
                 detector = self._detector
 
-            # Downscale frame for faster detection
-            det_frame, scale_x, scale_y = _maybe_downscale(frame)
+            # Downscale frame for faster detection — face detector uses its own scale
+            face_mode = isinstance(detector, FaceDetector)
+            det_frame, scale_x, scale_y = _maybe_downscale(frame, face_mode)
 
             try:
                 detections = detector.detect(det_frame)
@@ -136,9 +137,9 @@ class VisionPipeline:
             _feed_tracker(frame, detections)
 
 
-def _maybe_downscale(frame: np.ndarray) -> tuple[np.ndarray, float, float]:
+def _maybe_downscale(frame: np.ndarray, face_mode: bool = False) -> tuple[np.ndarray, float, float]:
     """Return (det_frame, scale_x, scale_y).  scale_* maps det_frame coords → frame coords."""
-    scale = config.DET_SCALE
+    scale = config.FACE_DET_SCALE if face_mode else config.DET_SCALE
     if scale >= 1.0:
         return frame, 1.0, 1.0
     orig_h, orig_w = frame.shape[:2]

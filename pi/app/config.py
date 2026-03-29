@@ -88,11 +88,14 @@ FACE_MIN_CONFIDENCE  = float(os.getenv("FACE_MIN_CONFIDENCE", "0.4"))  # MediaPi
 FACE_MODEL_SELECTION = int(os.getenv("FACE_MODEL_SELECTION", "1"))     # 0=short range (<2m), 1=full range
 
 # Detection performance — reduce CPU load on Pi
-# DET_SCALE: resize input frame to this fraction before running detector (0.5 = half res).
-#            Bounding boxes are automatically scaled back to full resolution.
-# DET_SKIP:  only run detector every N frames; reuse previous boxes in between (1 = every frame).
-DET_SCALE = float(os.getenv("DET_SCALE", "0.5"))
-DET_SKIP  = int(os.getenv("DET_SKIP",   "2"))
+# DET_SCALE:      resize frame before object detection (YOLO/EfficientDet).  0.5 = half res.
+#                 Bounding boxes are automatically scaled back to full resolution.
+# FACE_DET_SCALE: scale for face detection.  MediaPipe face detection is fast enough at full
+#                 resolution and is much more accurate — keep at 1.0 unless CPU is overloaded.
+# DET_SKIP:       only run detector every N frames; reuse previous boxes in between.
+DET_SCALE      = float(os.getenv("DET_SCALE",      "0.5"))
+FACE_DET_SCALE = float(os.getenv("FACE_DET_SCALE", "1.0"))
+DET_SKIP       = int(os.getenv("DET_SKIP",         "2"))
 
 # ---------------------------------------------------------------------------
 # Face recognition
