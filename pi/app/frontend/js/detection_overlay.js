@@ -30,15 +30,12 @@ export function initOverlay(imgEl, canvasEl) {
 }
 
 function syncSize() {
-  const imgRect  = _img.getBoundingClientRect();
-  const wrapRect = _img.parentElement.getBoundingClientRect();
-
   _canvas.width  = _img.naturalWidth  || _img.offsetWidth;
   _canvas.height = _img.naturalHeight || _img.offsetHeight;
   _canvas.style.width  = _img.offsetWidth  + "px";
   _canvas.style.height = _img.offsetHeight + "px";
-  _canvas.style.left   = (imgRect.left - wrapRect.left) + "px";
-  _canvas.style.top    = (imgRect.top  - wrapRect.top)  + "px";
+  _canvas.style.left   = _img.offsetLeft + "px";
+  _canvas.style.top    = _img.offsetTop  + "px";
   redraw();
 }
 

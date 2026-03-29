@@ -109,11 +109,18 @@ class FaceDetector:
 
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
+        h, w = rgb.shape[:2]
         for d in detections:
-            # face_recognition location format: (top, right, bottom, left)
-            location = [(d.y, d.x + d.w, d.y + d.h, d.x)]
+            # Expand bbox by 20% for better encoding at distance
+            pad_x = int(d.w * 0.2)
+            pad_y = int(d.h * 0.2)
+            top    = max(0, d.y - pad_y)
+            right  = min(w, d.x + d.w + pad_x)
+            bottom = min(h, d.y + d.h + pad_y)
+            left   = max(0, d.x - pad_x)
+            location = [(top, right, bottom, left)]
             try:
-                encodings = fr.face_encodings(rgb, location)
+                encodings = fr.face_encodings(rgb, location, num_jitters=1)
             except Exception:
                 continue
 

@@ -78,11 +78,17 @@ async def enroll_face(req: EnrollPersonRequest):
 
         best = max(face_dets_now, key=lambda d: d.w * d.h)
         rgb  = cv2.cvtColor(f, cv2.COLOR_BGR2RGB)
-        loc  = [(best.y, best.x + best.w, best.y + best.h, best.x)]
+        fh, fw = rgb.shape[:2]
+        pad_x = int(best.w * 0.2)
+        pad_y = int(best.h * 0.2)
+        loc = [(max(0, best.y - pad_y),
+                min(fw, best.x + best.w + pad_x),
+                min(fh, best.y + best.h + pad_y),
+                max(0, best.x - pad_x))]
 
         try:
             loop = asyncio.get_event_loop()
-            encs = await loop.run_in_executor(None, partial(fr.face_encodings, rgb, loc))
+            encs = await loop.run_in_executor(None, partial(fr.face_encodings, rgb, loc, 1))
             if encs:
                 all_encodings.append(encs[0])
         except Exception as e:
