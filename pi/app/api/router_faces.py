@@ -9,7 +9,9 @@ DELETE /api/faces/name/{name}  Delete all encodings for a person
 
 from __future__ import annotations
 
+import asyncio
 import logging
+from functools import partial
 
 import cv2
 import numpy as np
@@ -58,7 +60,11 @@ async def enroll_face(req: EnrollPersonRequest):
     location = [(det.y, det.x + det.w, det.y + det.h, det.x)]
 
     try:
-        encodings = fr.face_encodings(rgb, location)
+        # Run CPU-intensive encoding in thread pool so it doesn't block the event loop
+        loop = asyncio.get_event_loop()
+        encodings = await loop.run_in_executor(
+            None, partial(fr.face_encodings, rgb, location)
+        )
     except Exception as e:
         log.error("face_encodings failed: %s", e)
         raise HTTPException(500, f"Encoding failed: {e}")
