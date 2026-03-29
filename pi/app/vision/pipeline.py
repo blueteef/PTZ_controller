@@ -21,7 +21,6 @@ import time
 from typing import Union
 
 import cv2
-import numpy as np
 
 from app import config
 from app.state import state, Detection
@@ -32,12 +31,6 @@ from app.vision.detector_yolo import YOLODetector
 log = logging.getLogger(__name__)
 
 Detector = Union[NullDetector, FaceDetector, YOLODetector]
-
-# Bounding box colour per detector type
-_COLOURS = {
-    "face": (0, 220, 0),    # green
-    "yolo": (0, 140, 255),  # orange-ish
-}
 
 
 class VisionPipeline:
@@ -111,8 +104,6 @@ class VisionPipeline:
 
             # Frame skipping: reuse last detection boxes on skipped frames
             if config.DET_SKIP > 1 and frame_count % config.DET_SKIP != 0:
-                annotated = _draw_boxes(frame, last_detections)
-                state.set_annotated(annotated, last_detections)
                 _feed_tracker(frame, last_detections)
                 continue
 
@@ -141,8 +132,7 @@ class VisionPipeline:
                 detections = []
 
             last_detections = detections
-            annotated = _draw_boxes(frame, detections)
-            state.set_annotated(annotated, detections)
+            state.set_annotated(frame, detections)
             _feed_tracker(frame, detections)
 
 
@@ -163,21 +153,6 @@ def _feed_tracker(frame: np.ndarray, detections: list[Detection]) -> None:
     if _t.tracker is not None and state.tracking_enabled:
         h, w = frame.shape[:2]
         _t.tracker.update(detections, frame_w=w, frame_h=h)
-
-
-def _draw_boxes(frame: np.ndarray, detections: list[Detection]) -> np.ndarray:
-    if not detections:
-        return frame
-    out = frame.copy()
-    for d in detections:
-        colour = _COLOURS.get(d.label, (200, 200, 200))
-        cv2.rectangle(out, (d.x, d.y), (d.x + d.w, d.y + d.h), colour, 2)
-        label = f"{d.label} {d.confidence:.2f}"
-        if d.name:
-            label = f"{d.name} ({d.confidence:.2f})"
-        cv2.putText(out, label, (d.x, max(d.y - 8, 12)),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.55, colour, 2)
-    return out
 
 
 # Module-level singleton.

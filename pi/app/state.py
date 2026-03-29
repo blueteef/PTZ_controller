@@ -50,8 +50,8 @@ class AppState:
         # Latest raw frame from camera (BGR numpy array), replaced each capture tick.
         self.current_frame: Optional[np.ndarray] = None
 
-        # Latest annotated frame (detection boxes drawn), replaced each vision tick.
-        # stream.py serves this; falls back to current_frame if None.
+        # Unused for streaming (stream.py always serves current_frame).
+        # Kept for API consumers that may want the last-processed frame reference.
         self.annotated_frame: Optional[np.ndarray] = None
 
         # Detection / tracking

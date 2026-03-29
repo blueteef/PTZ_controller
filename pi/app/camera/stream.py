@@ -39,7 +39,11 @@ async def mjpeg_generator() -> AsyncIterator[bytes]:
     encode_params = [cv2.IMWRITE_JPEG_QUALITY, config.MJPEG_QUALITY]
 
     while True:
-        frame = state.get_servo_frame()
+        # Always serve the raw camera frame — boxes are drawn client-side via
+        # the canvas overlay.  Serving annotated_frame would throttle the stream
+        # to detector speed (2-5 fps on YOLO/face) since the annotated copy is
+        # only updated when detection completes.
+        frame = state.current_frame
         if frame is None:
             frame = _blank_frame()
 
