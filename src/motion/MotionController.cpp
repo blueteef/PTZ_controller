@@ -23,13 +23,13 @@ bool MotionController::begin() {
     // ── Pan axis ──────────────────────────────────────────────────────────────
     _stepper[0] = _engine.stepperConnectToPin(PAN_STEP_PIN);
     if (!_stepper[0]) return false;
-    _stepper[0]->setDirectionPin(PAN_DIR_PIN, PAN_DIR_INVERT);
+    _stepper[0]->setDirectionPin(PAN_DIR_PIN, _settings.panDirInvert);
     _stepper[0]->setAutoEnable(false);  // we manage EN pins directly
 
     // ── Tilt axis ─────────────────────────────────────────────────────────────
     _stepper[1] = _engine.stepperConnectToPin(TILT_STEP_PIN);
     if (!_stepper[1]) return false;
-    _stepper[1]->setDirectionPin(TILT_DIR_PIN, TILT_DIR_INVERT);
+    _stepper[1]->setDirectionPin(TILT_DIR_PIN, _settings.tiltDirInvert);
     _stepper[1]->setAutoEnable(false);
 
     // Drive EN pins directly — A4988: LOW = enabled, HIGH = disabled.
@@ -38,7 +38,6 @@ bool MotionController::begin() {
     digitalWrite(PAN_EN_PIN,  LOW);
     digitalWrite(TILT_EN_PIN, LOW);
 
-    loadSettings();
     applyStepperSettings(AxisId::PAN);
     applyStepperSettings(AxisId::TILT);
     return true;
@@ -231,32 +230,6 @@ bool MotionController::isRunning(AxisId axis) const {
 // Settings
 // =============================================================================
 
-void MotionController::loadSettings() {
-    _prefs.begin(NVS_NAMESPACE, true);
-    _settings.maxSpeedDegS      = _prefs.getFloat("speed",    DEFAULT_MAX_SPEED_DEG_S);
-    _settings.accelDegS2        = _prefs.getFloat("accel",    DEFAULT_ACCEL_DEG_S2);
-    _settings.fineSpeedScale    = _prefs.getFloat("fine",     DEFAULT_FINE_SPEED_SCALE);
-    _settings.panMinDeg         = _prefs.getFloat("pan_min",  PAN_SOFT_LIMIT_MIN);
-    _settings.panMaxDeg         = _prefs.getFloat("pan_max",  PAN_SOFT_LIMIT_MAX);
-    _settings.tiltMinDeg        = _prefs.getFloat("tilt_min", TILT_SOFT_LIMIT_MIN);
-    _settings.tiltMaxDeg        = _prefs.getFloat("tilt_max", TILT_SOFT_LIMIT_MAX);
-    _settings.softLimitsEnabled = _prefs.getBool ("limits_en", SOFT_LIMITS_ENABLED);
-    _prefs.end();
-}
-
-void MotionController::saveSettings() {
-    _prefs.begin(NVS_NAMESPACE, false);
-    _prefs.putFloat("speed",     _settings.maxSpeedDegS);
-    _prefs.putFloat("accel",     _settings.accelDegS2);
-    _prefs.putFloat("fine",      _settings.fineSpeedScale);
-    _prefs.putFloat("pan_min",   _settings.panMinDeg);
-    _prefs.putFloat("pan_max",   _settings.panMaxDeg);
-    _prefs.putFloat("tilt_min",  _settings.tiltMinDeg);
-    _prefs.putFloat("tilt_max",  _settings.tiltMaxDeg);
-    _prefs.putBool ("limits_en", _settings.softLimitsEnabled);
-    _prefs.end();
-}
-
 void MotionController::resetSettings() {
     _settings = MotionSettings{};
     applyStepperSettings(AxisId::PAN);
@@ -267,7 +240,13 @@ MotionSettings MotionController::getSettings() const { return _settings; }
 
 void MotionController::applySettings(const MotionSettings& s) {
     xSemaphoreTake(_mutex, portMAX_DELAY);
+    bool panInvertChanged  = (s.panDirInvert  != _settings.panDirInvert);
+    bool tiltInvertChanged = (s.tiltDirInvert != _settings.tiltDirInvert);
     _settings = s;
+    if (panInvertChanged  && _stepper[0])
+        _stepper[0]->setDirectionPin(PAN_DIR_PIN,  s.panDirInvert);
+    if (tiltInvertChanged && _stepper[1])
+        _stepper[1]->setDirectionPin(TILT_DIR_PIN, s.tiltDirInvert);
     applyStepperSettings(AxisId::PAN);
     applyStepperSettings(AxisId::TILT);
     xSemaphoreGive(_mutex);

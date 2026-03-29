@@ -101,16 +101,25 @@ FACE_RECOGNITION_TOLERANCE = float(os.getenv("FACE_RECOGNITION_TOLERANCE", "0.5"
 FACE_ENROLL_FRAMES         = 5   # frames captured per enrollment session
 
 # ---------------------------------------------------------------------------
-# Joystick / control
+# Motion settings — Pi is the single source of truth.
+# These are pushed to the ESP32 on every connect via push_settings().
+# Changing them here (or via .env) is the only place you need to edit.
 # ---------------------------------------------------------------------------
-# Invert axis direction if physical wiring or mount causes reversed motion.
-# True = flip the sign of velocity commands on that axis.
+MAX_SPEED_DEG_S  = float(os.getenv("MAX_SPEED_DEG_S",  "45.0"))
+ACCEL_DEG_S2     = float(os.getenv("ACCEL_DEG_S2",    "120.0"))
+FINE_SPEED_SCALE = float(os.getenv("FINE_SPEED_SCALE",  "0.2"))
+
+# Axis direction invert — flips the DIR pin on the ESP32 A4988 driver.
+# Set in .env: PAN_INVERT=true  or  TILT_INVERT=true
 PAN_INVERT  = os.getenv("PAN_INVERT",  "false").lower() == "true"
 TILT_INVERT = os.getenv("TILT_INVERT", "false").lower() == "true"
 
-# Default max speed for the web UI speed slider (deg/s).
-# 180 is the firmware max — start lower for manageable joystick feel.
-JOYSTICK_DEFAULT_SPEED = float(os.getenv("JOYSTICK_DEFAULT_SPEED", "45.0"))
+# Soft limits (degrees at output shaft)
+PAN_SOFT_LIMIT_MIN  = float(os.getenv("PAN_SOFT_LIMIT_MIN",  "-180.0"))
+PAN_SOFT_LIMIT_MAX  = float(os.getenv("PAN_SOFT_LIMIT_MAX",   "180.0"))
+TILT_SOFT_LIMIT_MIN = float(os.getenv("TILT_SOFT_LIMIT_MIN",  "-45.0"))
+TILT_SOFT_LIMIT_MAX = float(os.getenv("TILT_SOFT_LIMIT_MAX",   "90.0"))
+SOFT_LIMITS_ENABLED = os.getenv("SOFT_LIMITS_ENABLED", "false").lower() == "true"
 
 # ---------------------------------------------------------------------------
 # Tracking PID
@@ -120,9 +129,6 @@ PID_KI             = 0.01    # integral gain
 PID_KD             = 0.05    # derivative gain
 PID_MAX_VEL_DEG_S  = float(os.getenv("PID_MAX_VEL_DEG_S", "45.0"))  # tracking speed cap
 TRACKING_DEADBAND_PX = 15    # pixel radius around center — no correction inside
-
-# Runtime-mutable motion settings (changed via UI sliders)
-ACCEL_DEG_S2 = float(os.getenv("ACCEL_DEG_S2", "120.0"))
 
 # Coast mode: if no detection for this many frames, decay velocity to zero
 TRACKING_COAST_FRAMES = 5

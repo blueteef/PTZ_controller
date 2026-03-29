@@ -200,12 +200,13 @@ void CLI::cmdHelp(int argc, char** argv) {
         "  set speed  <°/s>\r\n"
         "  set accel  <°/s²>\r\n"
         "  set fine   <0–1>            Fine-mode speed scale (used in jog)\r\n"
+        "  set invert <pan|tilt> <0|1> Flip direction pin for axis\r\n"
         "  set limits <pan|tilt> <min> <max>\r\n"
         "  set limits on|off\r\n"
         "  get position|speed|accel|limits\r\n"
         "\r\n"
-        "  save                        Save settings to flash\r\n"
-        "  reset                       Restore defaults (RAM only)\r\n"
+        "  save                        No-op (Pi owns settings)\r\n"
+        "  reset                       Restore defaults (overwritten on Pi reconnect)\r\n"
         "  reboot\r\n"
         "──────────────────────────────────────────\r\n"
     );
@@ -449,7 +450,7 @@ void CLI::cmdDisable(int argc, char** argv) {
 // -----------------------------------------------------------------------------
 
 void CLI::cmdSet(int argc, char** argv) {
-    if (argc < 2) { print("Usage: set <speed|accel|fine|limits> ...\r\n"); return; }
+    if (argc < 2) { print("Usage: set <speed|accel|fine|invert|limits> ...\r\n"); return; }
     MotionSettings s = _motion.getSettings();
     const char* param = argv[1];
 
@@ -473,6 +474,16 @@ void CLI::cmdSet(int argc, char** argv) {
         s.fineSpeedScale = v;
         _motion.applySettings(s);
         printf("Fine scale: %.2f\r\n", v);
+
+    } else if (strcmp(param, "invert") == 0) {
+        if (argc < 4) { print("Usage: set invert <pan|tilt> <0|1>\r\n"); return; }
+        AxisId axis;
+        if (!parseAxis(argv[2], axis)) { printf("Unknown axis '%s'\r\n", argv[2]); return; }
+        bool inv = (argv[3][0] == '1');
+        if (axis == AxisId::PAN)  s.panDirInvert  = inv;
+        else                       s.tiltDirInvert = inv;
+        _motion.applySettings(s);
+        printf("Invert %s: %s\r\n", argv[2], inv ? "on" : "off");
 
     } else if (strcmp(param, "limits") == 0) {
         if (argc < 3) { print("Usage: set limits <pan|tilt> <min> <max>  or  set limits on|off\r\n"); return; }
@@ -554,13 +565,13 @@ void CLI::cmdPing(int argc, char** argv) {
 // -----------------------------------------------------------------------------
 
 void CLI::cmdSave(int /*argc*/, char** /*argv*/) {
-    _motion.saveSettings();
-    print("Settings saved\r\n");
+    // Settings are owned by the Pi and pushed on every connect — no NVS persistence.
+    print("NOTE: settings are managed by the Pi; 'save' is a no-op.\r\n");
 }
 
 void CLI::cmdReset(int /*argc*/, char** /*argv*/) {
     _motion.resetSettings();
-    print("Settings reset to defaults (not saved — use 'save' to persist)\r\n");
+    print("Settings reset to defaults (Pi will push its config on next connect)\r\n");
 }
 
 void CLI::cmdReboot(int /*argc*/, char** /*argv*/) {

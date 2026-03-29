@@ -144,7 +144,7 @@ function wireSpeedSlider() {
     const v = parseFloat(slider.value);
     label.textContent = v;
     window._ptz_max_vel = v;
-    send({ type: "update_settings", tracking_speed: v });
+    send({ type: "update_settings", speed: v, tracking_speed: v });
   };
 }
 
@@ -286,7 +286,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   try {
     const res = await fetch("/api/settings/ui");
     const cfg = await res.json();
-    window._ptz_default_speed  = cfg.default_speed;
+    window._ptz_default_speed  = cfg.max_speed_deg_s;
     window._ptz_default_accel  = cfg.accel_deg_s2;
     window._ptz_pan_invert     = cfg.pan_invert;
     window._ptz_tilt_invert    = cfg.tilt_invert;

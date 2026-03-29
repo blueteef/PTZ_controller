@@ -106,8 +106,7 @@ async def _handle_message(ws: WebSocket, raw: str) -> None:
     if t == "velocity":
         pan  = float(msg.get("pan",  0.0))
         tilt = float(msg.get("tilt", 0.0))
-        if config.PAN_INVERT:  pan  = -pan
-        if config.TILT_INVERT: tilt = -tilt
+        # Direction invert is handled at the ESP32 hardware level (set invert).
         bridge.send(protocol.cmd_vel("pan",  pan))
         bridge.send(protocol.cmd_vel("tilt", tilt))
 
@@ -139,8 +138,13 @@ async def _handle_message(ws: WebSocket, raw: str) -> None:
             config.PID_MAX_VEL_DEG_S = float(msg["tracking_speed"])
         if "pan_invert" in msg:
             config.PAN_INVERT = bool(msg["pan_invert"])
+            bridge.send(protocol.cmd_set_invert("pan", config.PAN_INVERT))
         if "tilt_invert" in msg:
             config.TILT_INVERT = bool(msg["tilt_invert"])
+            bridge.send(protocol.cmd_set_invert("tilt", config.TILT_INVERT))
+        if "speed" in msg:
+            config.MAX_SPEED_DEG_S = float(msg["speed"])
+            bridge.send(protocol.cmd_set_speed(config.MAX_SPEED_DEG_S))
         if "accel" in msg:
             config.ACCEL_DEG_S2 = float(msg["accel"])
             bridge.send(protocol.cmd_set_accel(config.ACCEL_DEG_S2))

@@ -29,6 +29,8 @@ class MotionSettingsRequest(BaseModel):
     max_speed_deg_s: Optional[float] = None
     accel_deg_s2:    Optional[float] = None
     fine_scale:      Optional[float] = None
+    pan_invert:      Optional[bool]  = None
+    tilt_invert:     Optional[bool]  = None
 
 
 # ---------------------------------------------------------------------------

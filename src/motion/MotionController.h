@@ -4,24 +4,30 @@
 // MotionController — FastAccelStepper wrapper for two A4988-driven axes.
 //
 // Thread-safe: all public methods acquire _mutex; safe to call from any task.
+//
+// All motion settings are pushed by the Pi on every connect via the CLI
+// protocol.  The ESP32 holds no persistent (NVS) state for motion.
 // =============================================================================
 
 #include <FastAccelStepper.h>
-#include <Preferences.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
 #include "common_types.h"
 #include "config.h"
 
 struct MotionSettings {
-    float maxSpeedDegS    = DEFAULT_MAX_SPEED_DEG_S;
-    float accelDegS2      = DEFAULT_ACCEL_DEG_S2;
-    float fineSpeedScale  = DEFAULT_FINE_SPEED_SCALE;
-    float panMinDeg       = PAN_SOFT_LIMIT_MIN;
-    float panMaxDeg       = PAN_SOFT_LIMIT_MAX;
-    float tiltMinDeg      = TILT_SOFT_LIMIT_MIN;
-    float tiltMaxDeg      = TILT_SOFT_LIMIT_MAX;
-    bool  softLimitsEnabled = SOFT_LIMITS_ENABLED;
+    // Pi pushes these on every connect; defaults below are safe fallbacks
+    // used only if the Pi hasn't connected yet.
+    float maxSpeedDegS    = 45.0f;
+    float accelDegS2      = 120.0f;
+    float fineSpeedScale  = 0.2f;
+    float panMinDeg       = -180.0f;
+    float panMaxDeg       =  180.0f;
+    float tiltMinDeg      =  -45.0f;
+    float tiltMaxDeg      =   90.0f;
+    bool  softLimitsEnabled = false;
+    bool  panDirInvert    = false;
+    bool  tiltDirInvert   = false;
 };
 
 class MotionController {
@@ -56,8 +62,6 @@ public:
     // ── Settings ─────────────────────────────────────────────────────────────
     MotionSettings getSettings()                    const;
     void           applySettings(const MotionSettings& s);
-    void           loadSettings();
-    void           saveSettings();
     void           resetSettings();
 
     // ── FreeRTOS task ────────────────────────────────────────────────────────
@@ -71,7 +75,6 @@ private:
     int8_t                 _lastDir[2]      = {0, 0};  // -1, 0, +1 per axis
     bool                   _estop           = false;
     volatile uint32_t      _lastVelCmdMs    = 0;       // watchdog timestamp
-    Preferences            _prefs;
     SemaphoreHandle_t      _mutex           = nullptr;
 
     float   stepsPerDeg(AxisId axis)               const;

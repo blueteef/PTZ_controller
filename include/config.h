@@ -1,8 +1,11 @@
 #pragma once
 
 // =============================================================================
-// PTZ Controller — Pin assignments and tunable constants
-// A4988 step/dir/en drivers on both axes.
+// PTZ Controller — Hardware pin assignments and fixed constants only.
+//
+// All tunable motion settings (speed, accel, limits, invert, fine scale) are
+// owned by the Pi and pushed to the ESP32 via the CLI protocol on every
+// connect. The ESP32 has no persistent storage for motion settings.
 // =============================================================================
 
 // -----------------------------------------------------------------------------
@@ -20,37 +23,21 @@
 #define PAN_STEP_PIN     27
 #define PAN_EN_PIN       14
 
-
-// Stepper direction invert — set true if axis moves the wrong way.
-// Flips DIR logic in FastAccelStepper; no rewiring needed.
-#define PAN_DIR_INVERT   true
-#define TILT_DIR_INVERT  true
-
-// A4988 EN is active-LOW: drive LOW to enable, HIGH to disable.
-// EN pins are managed directly with digitalWrite — not via FastAccelStepper.
-
-// MS1/MS2/MS3 on A4988 should be hardwired for 16x microstepping:
-//   MS1=HIGH  MS2=HIGH  MS3=HIGH  → connect to 3.3 V on the breakout
-
 // -----------------------------------------------------------------------------
-// Pi UART (Serial2) — direct GPIO link, no USB cable needed
+// Pi UART (Serial2) — direct GPIO link, no USB cable needed.
 //   Pi GPIO14 (TX) → ESP32 GPIO19 (RX)
 //   Pi GPIO15 (RX) ← ESP32 GPIO21 (TX)
-//   Pi GND         → ESP32 GND        (3.3 V logic on both sides, no shifter)
-// On Pi: enable serial in raspi-config → Interface Options → Serial
-//   disable login shell on serial, enable serial port hardware → /dev/serial0
+//   Pi GND         → ESP32 GND  (3.3 V logic on both sides, no shifter)
 // -----------------------------------------------------------------------------
 #define PI_UART_RX_PIN   19
 #define PI_UART_TX_PIN   21
 #define PI_BAUD_RATE     57600
 
-// UART0 (Serial/USB) — kept for development and local debugging
-
 // -----------------------------------------------------------------------------
-// Motor / gearing
+// Motor / gearing — physical hardware, do not change without rewiring.
 // -----------------------------------------------------------------------------
 #define MOTOR_STEPS_PER_REV   200       // 1.8°/step NEMA17
-#define DEFAULT_MICROSTEPS    16
+#define DEFAULT_MICROSTEPS    16        // A4988: MS1/MS2/MS3 all HIGH → 1/16
 
 // Pan  gear ratio  144:17  ≈ 8.47:1  (output : motor)
 #define PAN_GEAR_RATIO_NUM    144
@@ -60,31 +47,17 @@
 #define TILT_GEAR_RATIO_NUM   64
 #define TILT_GEAR_RATIO_DEN   21
 
-// -----------------------------------------------------------------------------
-// Motion defaults  — conservative starting point; tune with 'set speed/accel'
-// -----------------------------------------------------------------------------
-#define DEFAULT_MAX_SPEED_DEG_S    45.0f   // output-shaft deg/s
-#define DEFAULT_ACCEL_DEG_S2      190.0f   // output-shaft deg/s²
-#define DEFAULT_FINE_SPEED_SCALE    0.2f   // 'jog fine' multiplier
+// Minimum speed below which setVelocity issues a stop instead.
+#define MIN_VELOCITY_DEG_S    0.5f
 
-// Minimum speed threshold below which setVelocity issues a stop instead.
-#define MIN_VELOCITY_DEG_S          0.5f
-
-// -----------------------------------------------------------------------------
-// Soft travel limits (degrees at output shaft)
-// -----------------------------------------------------------------------------
-#define PAN_SOFT_LIMIT_MIN    -180.0f
-#define PAN_SOFT_LIMIT_MAX     180.0f
-#define TILT_SOFT_LIMIT_MIN    -45.0f
-#define TILT_SOFT_LIMIT_MAX     90.0f
-#define SOFT_LIMITS_ENABLED    false   // enable after verifying range of motion
+// Velocity watchdog: stop all axes if no vel command arrives while running.
+#define VEL_WATCHDOG_MS       110
 
 // -----------------------------------------------------------------------------
 // FreeRTOS tasks
 // -----------------------------------------------------------------------------
 #define TASK_MOTION_PRIORITY   5
 #define TASK_CLI_PRIORITY      2
-
 #define TASK_MOTION_STACK      4096
 #define TASK_CLI_STACK         6144
 
@@ -96,14 +69,5 @@
 #define CLI_MAX_LINE    256
 #define CLI_MAX_ARGS    16
 
-// Jog mode: if no directional key arrives within this window, stop the axis.
-#define JOG_KEY_TIMEOUT_MS   150
-
-// Velocity watchdog: if no vel command arrives within this window while an axis
-// is running, stop all axes.  Catches dropped stop commands from the Pi.
-#define VEL_WATCHDOG_MS      110
-
-// -----------------------------------------------------------------------------
-// System
-// -----------------------------------------------------------------------------
-#define NVS_NAMESPACE   "ptz_cfg"
+// Jog mode: stop axis if no directional key arrives within this window.
+#define JOG_KEY_TIMEOUT_MS    150

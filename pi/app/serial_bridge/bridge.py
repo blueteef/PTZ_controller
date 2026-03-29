@@ -181,6 +181,30 @@ class ESPBridge:
     # Internal: connection management
     # ------------------------------------------------------------------
 
+    def _push_settings(self) -> None:
+        """Send all Pi-owned motion settings to the ESP32 after connect."""
+        cmds = [
+            protocol.cmd_set_speed(config.MAX_SPEED_DEG_S),
+            protocol.cmd_set_accel(config.ACCEL_DEG_S2),
+            protocol.cmd_set_fine(config.FINE_SPEED_SCALE),
+            protocol.cmd_set_invert("pan",  config.PAN_INVERT),
+            protocol.cmd_set_invert("tilt", config.TILT_INVERT),
+            protocol.cmd_set_limits("pan",  config.PAN_SOFT_LIMIT_MIN,  config.PAN_SOFT_LIMIT_MAX),
+            protocol.cmd_set_limits("tilt", config.TILT_SOFT_LIMIT_MIN, config.TILT_SOFT_LIMIT_MAX),
+            protocol.cmd_set_limits_enabled(config.SOFT_LIMITS_ENABLED),
+        ]
+        for cmd in cmds:
+            try:
+                self._port.write(cmd.encode())
+                self._port.flush()
+                time.sleep(0.015)  # give ESP32 time to process each command
+                if self._port.in_waiting:
+                    self._port.read(self._port.in_waiting)
+            except serial.SerialException as e:
+                log.warning("push_settings failed: %s", e)
+                return
+        log.info("Motion settings pushed to ESP32")
+
     def _connect(self) -> None:
         try:
             port = serial.Serial(
@@ -193,6 +217,7 @@ class ESPBridge:
             self._port = port
             state.serial_connected = True
             log.info("Connected to ESP32 on %s", config.SERIAL_PORT)
+            self._push_settings()
         except serial.SerialException as e:
             log.debug("Connect failed: %s", e)
             state.serial_connected = False

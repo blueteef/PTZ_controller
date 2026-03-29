@@ -126,10 +126,7 @@ class GimbalTracker:
 
         pan_vel  = self._pan_pid.update(pan_err_deg)
         tilt_vel = self._tilt_pid.update(tilt_err_deg)
-
-        if config.PAN_INVERT:  pan_vel  = -pan_vel
-        if config.TILT_INVERT: tilt_vel = -tilt_vel
-
+        # Direction invert is handled at the ESP32 hardware level (set invert).
         self._send(protocol.cmd_vel("pan",  pan_vel))
         self._send(protocol.cmd_vel("tilt", tilt_vel))
 

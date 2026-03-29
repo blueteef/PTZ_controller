@@ -11,14 +11,15 @@ ESP32 CLI command reference (relevant subset):
   vel  <pan|tilt|all>  <deg_s>        Continuous velocity — no response printed
   stop [pan|tilt|all]                 Decelerate to zero
   estop                               Immediate hard stop
-  home [pan|tilt|all]                 Trigger homing sequence
   get  position                       Returns: "pan  : X.XXX °\\ntilt : X.XXX °"
   get  speed                          Returns: "max speed : X.XX °/s"
   set  speed <deg_s>                  Set max speed
   set  accel <deg_s2>                 Set acceleration
+  set  fine  <0.0-1.0>               Set fine-speed scale
+  set  invert <pan|tilt> <0|1>        Flip axis direction pin
+  set  limits <pan|tilt> <min> <max>  Set per-axis soft limits (degrees)
   set  limits on|off                  Toggle soft limits
   enable  [pan|tilt|all]              Enable driver output stage
-  save                                Persist settings to flash
   ping [pan|tilt|all]                 UART link test → "ping pan ... OK"
 """
 
@@ -96,8 +97,20 @@ def cmd_set_accel(deg_s2: float) -> str:
     return f"set accel {deg_s2:.2f}\n"
 
 
-def cmd_save() -> str:
-    return "save\n"
+def cmd_set_fine(scale: float) -> str:
+    return f"set fine {scale:.3f}\n"
+
+
+def cmd_set_invert(axis: str, inverted: bool) -> str:
+    return f"set invert {axis} {'1' if inverted else '0'}\n"
+
+
+def cmd_set_limits(axis: str, min_deg: float, max_deg: float) -> str:
+    return f"set limits {axis} {min_deg:.2f} {max_deg:.2f}\n"
+
+
+def cmd_set_limits_enabled(enabled: bool) -> str:
+    return f"set limits {'on' if enabled else 'off'}\n"
 
 
 # ---------------------------------------------------------------------------
