@@ -255,9 +255,9 @@ function wireFaceRecognition() {
       });
       const data = await res.json();
       if (res.ok) {
-        status.textContent = `✓ Enrolled "${data.name}"`;
+        status.textContent = `✓ Enrolled "${data.name}" (${data.samples} samples)`;
         document.getElementById("enroll-name").value = "";
-        document.activeElement?.blur();  // release keyboard focus so WASD works
+        document.activeElement?.blur();
         loadFaces();
       } else {
         status.textContent = `✗ ${data.detail ?? "Enrollment failed"}`;

@@ -56,25 +56,49 @@ async def enroll_face(req: EnrollPersonRequest):
             "face_recognition library not installed. Run: pip install face-recognition"
         )
 
-    rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    location = [(det.y, det.x + det.w, det.y + det.h, det.x)]
+    # Collect FACE_ENROLL_FRAMES frames worth of encodings and average them
+    # for a more robust enrollment sample.
+    import time
+    from app import config as cfg
 
-    try:
-        # Run CPU-intensive encoding in thread pool so it doesn't block the event loop
-        loop = asyncio.get_event_loop()
-        encodings = await loop.run_in_executor(
-            None, partial(fr.face_encodings, rgb, location)
-        )
-    except Exception as e:
-        log.error("face_encodings failed: %s", e)
-        raise HTTPException(500, f"Encoding failed: {e}")
+    all_encodings = []
+    frames_checked = 0
+    deadline = time.monotonic() + 2.0   # 2 second window
 
-    if not encodings:
+    while len(all_encodings) < cfg.FACE_ENROLL_FRAMES and time.monotonic() < deadline:
+        f = state.current_frame
+        if f is None:
+            await asyncio.sleep(0.05)
+            continue
+
+        face_dets_now = [d for d in state.last_detections if d.label == "face"]
+        if not face_dets_now:
+            await asyncio.sleep(0.05)
+            continue
+
+        best = max(face_dets_now, key=lambda d: d.w * d.h)
+        rgb  = cv2.cvtColor(f, cv2.COLOR_BGR2RGB)
+        loc  = [(best.y, best.x + best.w, best.y + best.h, best.x)]
+
+        try:
+            loop = asyncio.get_event_loop()
+            encs = await loop.run_in_executor(None, partial(fr.face_encodings, rgb, loc))
+            if encs:
+                all_encodings.append(encs[0])
+        except Exception as e:
+            log.warning("Encoding frame failed: %s", e)
+
+        frames_checked += 1
+        await asyncio.sleep(0.1)   # ~10 fps sampling
+
+    if not all_encodings:
         raise HTTPException(400, "Could not compute face encoding — is the face clearly visible?")
 
-    face_id = db.enroll_face(req.name, encodings[0])
-    log.info("Enrolled face: %s (id=%d)", req.name, face_id)
-    return {"ok": True, "id": face_id, "name": req.name}
+    # Average all collected encodings into one representative vector
+    avg_encoding = np.mean(all_encodings, axis=0)
+    face_id = db.enroll_face(req.name, avg_encoding)
+    log.info("Enrolled face: %s (id=%d, samples=%d)", req.name, face_id, len(all_encodings))
+    return {"ok": True, "id": face_id, "name": req.name, "samples": len(all_encodings)}
 
 
 @router.delete("/name/{name}")
