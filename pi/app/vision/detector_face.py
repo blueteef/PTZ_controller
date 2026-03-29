@@ -1,12 +1,14 @@
 """
-detector_face.py — MediaPipe face detection.
+detector_face.py — MediaPipe face detection + optional dlib face recognition.
 
-Returns one Detection per face found in the frame.
-The detector is lazy-initialized on first use so import is cheap.
+Detection runs every frame at full speed.
+Recognition (encoding + DB match) is gated behind compute_encodings=True and
+runs every RECOGNITION_INTERVAL detection passes to keep CPU load manageable
+on the Pi (~150ms per face for dlib encoding).
 
-Optionally computes face encodings (dlib 128-d vectors) when
-`compute_encodings=True` is passed at init — used by the recognizer.
-This is slow (~100ms/face) so only enable it when recognition is active.
+Requires the `face_recognition` package for recognition:
+  pip install face-recognition
+Detection-only mode works without it.
 """
 
 from __future__ import annotations
@@ -22,11 +24,20 @@ from app.state import Detection
 
 log = logging.getLogger(__name__)
 
+RECOGNITION_INTERVAL = 5   # run encoding every Nth detect() call
+
 
 class FaceDetector:
     def __init__(self, compute_encodings: bool = False) -> None:
         self._compute_encodings = compute_encodings
-        self._detector = None  # lazy init
+        self._detector = None   # lazy MediaPipe init
+        self._rec_counter = 0
+
+    def set_compute_encodings(self, enabled: bool) -> None:
+        self._compute_encodings = enabled
+        self._rec_counter = 0
+
+    # ------------------------------------------------------------------
 
     def _ensure_init(self) -> None:
         if self._detector is None:
@@ -45,7 +56,6 @@ class FaceDetector:
         self._ensure_init()
         h, w = frame.shape[:2]
 
-        # MediaPipe expects RGB
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         results = self._detector.process(rgb)
 
@@ -57,8 +67,8 @@ class FaceDetector:
             bb = det.location_data.relative_bounding_box
             x = max(0, int(bb.xmin * w))
             y = max(0, int(bb.ymin * h))
-            bw = int(bb.width * w)
-            bh = int(bb.height * h)
+            bw = min(int(bb.width  * w), w - x)
+            bh = min(int(bb.height * h), h - y)
 
             detections.append(Detection(
                 id=i,
@@ -67,7 +77,52 @@ class FaceDetector:
                 x=x, y=y, w=bw, h=bh,
             ))
 
+        # Recognition pass — throttled to every RECOGNITION_INTERVAL calls
+        if self._compute_encodings and detections:
+            self._rec_counter += 1
+            if self._rec_counter >= RECOGNITION_INTERVAL:
+                self._rec_counter = 0
+                self._run_recognition(frame, detections)
+
         return detections
 
-    def set_compute_encodings(self, enabled: bool) -> None:
-        self._compute_encodings = enabled
+    # ------------------------------------------------------------------
+    # Recognition helpers
+    # ------------------------------------------------------------------
+
+    def _run_recognition(self, frame: np.ndarray,
+                         detections: list[Detection]) -> None:
+        try:
+            import face_recognition as fr
+        except ImportError:
+            log.warning("face_recognition not installed — recognition disabled")
+            self._compute_encodings = False
+            return
+
+        from app.db import get_all_encodings
+        known = get_all_encodings()
+        if not known:
+            return
+
+        known_names = [n for n, _ in known]
+        known_encs  = [e for _, e in known]
+
+        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+        for d in detections:
+            # face_recognition location format: (top, right, bottom, left)
+            location = [(d.y, d.x + d.w, d.y + d.h, d.x)]
+            try:
+                encodings = fr.face_encodings(rgb, location)
+            except Exception:
+                continue
+
+            if not encodings:
+                continue
+
+            enc = encodings[0]
+            distances = fr.face_distance(known_encs, enc)
+            best_idx  = int(np.argmin(distances))
+
+            if distances[best_idx] <= config.FACE_RECOGNITION_TOLERANCE:
+                d.name = known_names[best_idx]

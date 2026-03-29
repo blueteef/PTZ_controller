@@ -146,16 +146,21 @@ async def _handle_message(ws: WebSocket, raw: str) -> None:
             bridge.send(protocol.cmd_set_accel(config.ACCEL_DEG_S2))
 
     elif t == "set_tracking":
-        enabled   = bool(msg.get("enabled", False))
-        target_id = msg.get("target_id")
+        enabled     = bool(msg.get("enabled", False))
+        target_id   = msg.get("target_id")
+        target_name = msg.get("target_name")
         from app.vision.tracker import tracker
         if tracker is None:
             await ws.send_json(make_error("Tracker not initialised"))
             return
         if enabled:
-            tracker.start(target_id)
+            tracker.start(target_id=target_id, target_name=target_name)
         else:
             tracker.stop()
+
+    elif t == "set_recognition":
+        enabled = bool(msg.get("enabled", False))
+        pipeline.set_recognition(enabled)
 
     else:
         await ws.send_json(make_error(f"Unknown message type: '{t}'"))

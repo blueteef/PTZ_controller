@@ -56,8 +56,10 @@ class AppState:
 
         # Detection / tracking
         self.detection_mode: str = "none"   # "none" | "face" | "yolo"
+        self.recognition_enabled: bool = False
         self.tracking_enabled: bool = False
-        self.tracking_target_id: Optional[int] = None   # detection .id to follow
+        self.tracking_target_id: Optional[int] = None     # detection .id to follow
+        self.tracking_target_name: Optional[str] = None   # recognized name to follow
 
         # Last set of detections from the vision pipeline
         self.last_detections: list[Detection] = []

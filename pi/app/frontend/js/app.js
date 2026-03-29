@@ -183,6 +183,100 @@ function wireInvertToggles() {
 }
 
 // ---------------------------------------------------------------------------
+// Face recognition
+// ---------------------------------------------------------------------------
+
+async function loadFaces() {
+  try {
+    const res  = await fetch("/api/faces");
+    const data = await res.json();
+    renderFaceList(data.faces);
+    populateTrackSelect(data.faces);
+  } catch (e) {
+    console.warn("Could not load faces", e);
+  }
+}
+
+function renderFaceList(faces) {
+  const el = document.getElementById("faces-list");
+  if (!faces.length) { el.innerHTML = '<p class="hint">No faces enrolled.</p>'; return; }
+
+  // Group by name
+  const byName = {};
+  for (const f of faces) {
+    if (!byName[f.name]) byName[f.name] = [];
+    byName[f.name].push(f);
+  }
+
+  el.innerHTML = Object.entries(byName).map(([name, entries]) => `
+    <div class="face-row">
+      <span class="face-name">${name}</span>
+      <span class="face-count">${entries.length} sample${entries.length > 1 ? "s" : ""}</span>
+      <button class="btn-del-face" data-name="${name}">✕</button>
+    </div>
+  `).join("");
+
+  el.querySelectorAll(".btn-del-face").forEach(btn => {
+    btn.onclick = async () => {
+      const name = btn.dataset.name;
+      await fetch(`/api/faces/name/${encodeURIComponent(name)}`, { method: "DELETE" });
+      loadFaces();
+    };
+  });
+}
+
+function populateTrackSelect(faces) {
+  const sel = document.getElementById("track-name-select");
+  const prev = sel.value;
+  // Unique names
+  const names = [...new Set(faces.map(f => f.name))].sort();
+  sel.innerHTML = '<option value="">— Track by name —</option>' +
+    names.map(n => `<option value="${n}"${n === prev ? " selected" : ""}>${n}</option>`).join("");
+}
+
+function wireFaceRecognition() {
+  const toggle = document.getElementById("recog-toggle");
+  toggle.onchange = () => {
+    send({ type: "set_recognition", enabled: toggle.checked });
+    document.getElementById("face-section").classList.toggle("recog-on", toggle.checked);
+  };
+
+  document.getElementById("btn-enroll").onclick = async () => {
+    const name = document.getElementById("enroll-name").value.trim();
+    const status = document.getElementById("enroll-status");
+    if (!name) { status.textContent = "Enter a name first."; return; }
+
+    status.textContent = "Enrolling…";
+    try {
+      const res  = await fetch("/api/faces/enroll", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ name }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        status.textContent = `✓ Enrolled "${data.name}"`;
+        document.getElementById("enroll-name").value = "";
+        loadFaces();
+      } else {
+        status.textContent = `✗ ${data.detail ?? "Enrollment failed"}`;
+      }
+    } catch (e) {
+      status.textContent = `✗ ${e}`;
+    }
+  };
+
+  document.getElementById("btn-track-name").onclick = () => {
+    const name = document.getElementById("track-name-select").value;
+    if (!name) return;
+    send({ type: "set_recognition", enabled: true });
+    document.getElementById("recog-toggle").checked = true;
+    document.getElementById("face-section").classList.add("recog-on");
+    send({ type: "set_tracking", enabled: true, target_name: name });
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Boot
 // ---------------------------------------------------------------------------
 
@@ -207,6 +301,8 @@ window.addEventListener("DOMContentLoaded", async () => {
   wireSpeedSlider();
   wireAccelSlider();
   wireInvertToggles();
+  wireFaceRecognition();
+  loadFaces();
   initJoystick(document.getElementById("joystick"));
   initOverlay(
     document.getElementById("feed"),

@@ -66,10 +66,11 @@ class VisionPipeline:
         with self._detector_lock:
             if mode == "none":
                 self._detector = NullDetector()
-                # Switching to none stops tracking automatically
                 state.tracking_enabled = False
             elif mode == "face":
-                self._detector = FaceDetector()
+                self._detector = FaceDetector(
+                    compute_encodings=state.recognition_enabled
+                )
             elif mode == "yolo":
                 self._detector = YOLODetector()
             else:
@@ -77,6 +78,17 @@ class VisionPipeline:
                 return
         state.detection_mode = mode
         log.info("Detection mode → %s", mode)
+
+    def set_recognition(self, enabled: bool) -> None:
+        """
+        Toggle face recognition on/off without changing detection mode.
+        Only meaningful when mode is 'face'.
+        """
+        state.recognition_enabled = enabled
+        with self._detector_lock:
+            if isinstance(self._detector, FaceDetector):
+                self._detector.set_compute_encodings(enabled)
+        log.info("Face recognition → %s", "on" if enabled else "off")
 
     # ------------------------------------------------------------------
     # Main loop

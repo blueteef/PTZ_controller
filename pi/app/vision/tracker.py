@@ -66,17 +66,20 @@ class GimbalTracker:
         self._tilt_pid = _PIDAxis()
         self._coast_count = 0
 
-    def start(self, target_id: Optional[int] = None) -> None:
-        state.tracking_enabled   = True
-        state.tracking_target_id = target_id
+    def start(self, target_id: Optional[int] = None,
+              target_name: Optional[str] = None) -> None:
+        state.tracking_enabled     = True
+        state.tracking_target_id   = target_id
+        state.tracking_target_name = target_name
         self._pan_pid.reset()
         self._tilt_pid.reset()
         self._coast_count = 0
-        log.info("Tracking started — target_id=%s", target_id)
+        log.info("Tracking started — target_id=%s target_name=%s", target_id, target_name)
 
     def stop(self) -> None:
-        state.tracking_enabled   = False
-        state.tracking_target_id = None
+        state.tracking_enabled     = False
+        state.tracking_target_id   = None
+        state.tracking_target_name = None
         self._send(protocol.cmd_stop())
         self._pan_pid.reset()
         self._tilt_pid.reset()
@@ -135,12 +138,22 @@ class GimbalTracker:
     def _find_target(self, detections: list[Detection]) -> Optional[Detection]:
         if not detections:
             return None
+
+        # Priority 1: match by recognized name (face recognition lock)
+        name = state.tracking_target_name
+        if name:
+            for d in detections:
+                if d.name == name:
+                    return d
+
+        # Priority 2: match by detection ID (click-to-track)
         tid = state.tracking_target_id
         if tid is not None:
             for d in detections:
                 if d.id == tid:
                     return d
-            # Target ID not found — fall back to first detection
+
+        # Fallback: first detection
         return detections[0]
 
 

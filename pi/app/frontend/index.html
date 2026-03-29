@@ -63,6 +63,32 @@
           <button id="btn-track-stop" class="btn warn" disabled>Stop Tracking</button>
         </section>
 
+        <!-- Face Recognition -->
+        <section id="face-section">
+          <h3>Face Recognition</h3>
+          <label class="toggle-row">
+            <input type="checkbox" id="recog-toggle"> Enable Recognition
+          </label>
+
+          <!-- Enroll -->
+          <div id="enroll-row">
+            <input id="enroll-name" type="text" placeholder="Name..." maxlength="32">
+            <button id="btn-enroll" class="btn">Enroll Face</button>
+          </div>
+          <p id="enroll-status" class="hint"></p>
+
+          <!-- Track by name -->
+          <div id="track-name-row">
+            <select id="track-name-select">
+              <option value="">— Track by name —</option>
+            </select>
+            <button id="btn-track-name" class="btn">Track</button>
+          </div>
+
+          <!-- Enrolled faces list -->
+          <div id="faces-list"></div>
+        </section>
+
         <!-- Speed -->
         <section>
           <h3>Max Speed <span id="speed-val">—</span> °/s</h3>

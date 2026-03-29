@@ -32,7 +32,8 @@ from app.camera.capture import camera
 from app.vision.pipeline import pipeline
 import app.vision.tracker as tracker_module
 from app.vision.tracker import GimbalTracker
-from app.api import router_stream, router_control, router_detection, router_settings
+from app.api import router_stream, router_control, router_detection, router_settings, router_faces
+from app import db
 
 logging.basicConfig(
     level=logging.INFO,
@@ -46,6 +47,7 @@ async def lifespan(app: FastAPI):
     # ── Startup ────────────────────────────────────────────────────────
     log.info("PTZ Pi server starting up")
 
+    db.init_db()
     bridge.start()
     camera.start()
     pipeline.start()
@@ -78,6 +80,7 @@ app.include_router(router_stream.router)
 app.include_router(router_control.router)
 app.include_router(router_detection.router)
 app.include_router(router_settings.router)
+app.include_router(router_faces.router)
 
 # ── Static files (frontend) ────────────────────────────────────────────────
 _frontend = Path(__file__).parent / "frontend"
