@@ -159,7 +159,8 @@ function recalcTargets() {
 }
 
 window.addEventListener("keydown", e => {
-  if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT") return;
+  // Only block WASD when user is actively typing in a text field
+  if (e.target.tagName === "INPUT" && e.target.type !== "checkbox" && e.target.type !== "range") return;
   if (e.repeat) return;   // ignore key-repeat events — we handle continuous send ourselves
 
   if (e.code === "Space") { e.preventDefault(); stopSending(); return; }

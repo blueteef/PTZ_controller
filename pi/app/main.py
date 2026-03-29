@@ -21,6 +21,8 @@ For development (auto-reload, Pi not required):
 from __future__ import annotations
 
 import logging
+import signal
+import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -40,6 +42,9 @@ logging.basicConfig(
     format="%(asctime)s  %(levelname)-8s  %(name)s  %(message)s",
 )
 log = logging.getLogger(__name__)
+
+# Ensure Ctrl+C always works even when dlib/C++ threads are running
+signal.signal(signal.SIGINT, lambda *_: sys.exit(0))
 
 
 @asynccontextmanager
