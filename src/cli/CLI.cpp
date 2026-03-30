@@ -200,6 +200,7 @@ void CLI::cmdHelp(int argc, char** argv) {
         "  set speed  <°/s>\r\n"
         "  set accel  <°/s²>\r\n"
         "  set fine   <0–1>            Fine-mode speed scale (used in jog)\r\n"
+        "  set hold   <ms>             Release EN after idle (0 = hold forever)\r\n"
         "  set invert <pan|tilt> <0|1> Flip direction pin for axis\r\n"
         "  set limits <pan|tilt> <min> <max>\r\n"
         "  set limits on|off\r\n"
@@ -474,6 +475,16 @@ void CLI::cmdSet(int argc, char** argv) {
         s.fineSpeedScale = v;
         _motion.applySettings(s);
         printf("Fine scale: %.2f\r\n", v);
+
+    } else if (strcmp(param, "hold") == 0) {
+        if (argc < 3) { print("Usage: set hold <ms>  (0 = hold forever)\r\n"); return; }
+        float v; if (!parseFloat(argv[2], v) || v < 0) { print("Invalid value\r\n"); return; }
+        s.holdTimeoutMs = (uint32_t)v;
+        _motion.applySettings(s);
+        if (s.holdTimeoutMs == 0)
+            print("Stepper hold: forever\r\n");
+        else
+            printf("Stepper hold timeout: %u ms\r\n", s.holdTimeoutMs);
 
     } else if (strcmp(param, "invert") == 0) {
         if (argc < 4) { print("Usage: set invert <pan|tilt> <0|1>\r\n"); return; }

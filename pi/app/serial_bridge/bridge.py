@@ -192,6 +192,7 @@ class ESPBridge:
             protocol.cmd_set_limits("pan",  config.PAN_SOFT_LIMIT_MIN,  config.PAN_SOFT_LIMIT_MAX),
             protocol.cmd_set_limits("tilt", config.TILT_SOFT_LIMIT_MIN, config.TILT_SOFT_LIMIT_MAX),
             protocol.cmd_set_limits_enabled(config.SOFT_LIMITS_ENABLED),
+            protocol.cmd_set_hold(config.STEPPER_HOLD_MS),
         ]
         for cmd in cmds:
             try:

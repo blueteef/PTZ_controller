@@ -53,11 +53,6 @@
 // Velocity watchdog: stop all axes if no vel command arrives while running.
 #define VEL_WATCHDOG_MS       110
 
-// Stepper hold timeout: release EN pin (disable driver) after this many ms of
-// idle.  Eliminates coil whine and heat when the gimbal is stationary.
-// A4988 has no current-reduction mode — full current or nothing.
-// Set 0 to hold indefinitely (useful if torque is needed to resist gravity).
-#define STEPPER_HOLD_MS       2000
 
 // -----------------------------------------------------------------------------
 // FreeRTOS tasks

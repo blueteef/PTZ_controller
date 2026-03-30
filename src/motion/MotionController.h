@@ -26,8 +26,9 @@ struct MotionSettings {
     float tiltMinDeg      =  -45.0f;
     float tiltMaxDeg      =   90.0f;
     bool  softLimitsEnabled = false;
-    bool  panDirInvert    = false;
-    bool  tiltDirInvert   = false;
+    bool     panDirInvert    = false;
+    bool     tiltDirInvert   = false;
+    uint32_t holdTimeoutMs   = 2000;  // release EN after this ms idle; 0 = hold forever
 };
 
 class MotionController {

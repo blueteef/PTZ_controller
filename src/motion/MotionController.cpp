@@ -299,24 +299,25 @@ void MotionController::motionTask(void* param) {
             }
         }
 
-        // Stepper hold timeout — release EN pins after STEPPER_HOLD_MS of idle.
-#if STEPPER_HOLD_MS > 0
-        for (int i = 0; i < 2; i++) {
-            if (!mc->_stepper[i] || mc->_estop) continue;
-            if (mc->_stepper[i]->isRunning()) {
-                mc->_stopTimeMs[i]      = 0;
-                mc->_stepperReleased[i] = false;
-            } else if (!mc->_stepperReleased[i]) {
-                if (mc->_stopTimeMs[i] == 0)
-                    mc->_stopTimeMs[i] = millis() ?: 1;  // non-zero sentinel
-                else if (millis() - mc->_stopTimeMs[i] >= STEPPER_HOLD_MS) {
-                    uint8_t pin = (i == 0) ? PAN_EN_PIN : TILT_EN_PIN;
-                    digitalWrite(pin, HIGH);  // A4988: HIGH = disabled
-                    mc->_stepperReleased[i] = true;
+        // Stepper hold timeout — release EN pins after holdTimeoutMs of idle.
+        uint32_t holdMs = mc->_settings.holdTimeoutMs;
+        if (holdMs > 0) {
+            for (int i = 0; i < 2; i++) {
+                if (!mc->_stepper[i] || mc->_estop) continue;
+                if (mc->_stepper[i]->isRunning()) {
+                    mc->_stopTimeMs[i]      = 0;
+                    mc->_stepperReleased[i] = false;
+                } else if (!mc->_stepperReleased[i]) {
+                    if (mc->_stopTimeMs[i] == 0)
+                        mc->_stopTimeMs[i] = millis() ?: 1;
+                    else if (millis() - mc->_stopTimeMs[i] >= holdMs) {
+                        uint8_t pin = (i == 0) ? PAN_EN_PIN : TILT_EN_PIN;
+                        digitalWrite(pin, HIGH);  // A4988: HIGH = disabled
+                        mc->_stepperReleased[i] = true;
+                    }
                 }
             }
         }
-#endif
 
         // Velocity watchdog — stop all axes if Pi goes silent while motors run.
         // Catches dropped stop commands; fires after VEL_WATCHDOG_MS of no vel cmds.

@@ -124,6 +124,10 @@ TILT_SOFT_LIMIT_MIN = float(os.getenv("TILT_SOFT_LIMIT_MIN",  "-45.0"))
 TILT_SOFT_LIMIT_MAX = float(os.getenv("TILT_SOFT_LIMIT_MAX",   "90.0"))
 SOFT_LIMITS_ENABLED = os.getenv("SOFT_LIMITS_ENABLED", "false").lower() == "true"
 
+# How long to hold stepper current after motors stop (ms). 0 = hold forever.
+# A4988 has no current-reduction mode — releasing EN eliminates heat and whine.
+STEPPER_HOLD_MS = int(os.getenv("STEPPER_HOLD_MS", "2000"))
+
 # ---------------------------------------------------------------------------
 # Tracking PID
 # ---------------------------------------------------------------------------

@@ -113,6 +113,10 @@ def cmd_set_limits_enabled(enabled: bool) -> str:
     return f"set limits {'on' if enabled else 'off'}\n"
 
 
+def cmd_set_hold(ms: int) -> str:
+    return f"set hold {ms}\n"
+
+
 # ---------------------------------------------------------------------------
 # Response parsers
 # ---------------------------------------------------------------------------
