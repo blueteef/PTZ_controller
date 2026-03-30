@@ -43,7 +43,7 @@ class CameraCapture:
             try:
                 self._cam = Picamera2()
                 cfg = self._cam.create_video_configuration(
-                    main={"size": (config.CAMERA_WIDTH, config.CAMERA_HEIGHT), "format": "BGR888"},
+                    main={"size": (config.CAMERA_WIDTH, config.CAMERA_HEIGHT), "format": "RGB888"},
                     controls={"FrameRate": config.CAMERA_FPS},
                 )
                 self._cam.configure(cfg)
@@ -92,9 +92,9 @@ class CameraCapture:
 
             if _PICAMERA_AVAILABLE and self._cam is not None:
                 try:
-                    # capture_array() with BGR888 format returns BGR directly — no conversion needed
                     import cv2
-                    frame = self._cam.capture_array()
+                    frame_rgb = self._cam.capture_array()
+                    frame = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
                     # Apply rotation correction for physical mount orientation
                     _ROT = {1: cv2.ROTATE_90_CLOCKWISE,
                             2: cv2.ROTATE_180,
