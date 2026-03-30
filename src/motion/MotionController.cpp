@@ -117,6 +117,14 @@ void MotionController::setVelocity(AxisId axis, float degS) {
     int idx = (int)axis;
     _lastVelCmdMs = millis();  // reset watchdog on every vel command
 
+    // Re-energize driver if it was released by the hold timeout.
+    if (_stepperReleased[idx]) {
+        uint8_t pin = (axis == AxisId::PAN) ? PAN_EN_PIN : TILT_EN_PIN;
+        digitalWrite(pin, LOW);  // A4988: LOW = enabled
+        _stepperReleased[idx] = false;
+        _stopTimeMs[idx]      = 0;
+    }
+
     xSemaphoreTake(_mutex, portMAX_DELAY);
 
     if (!_stepper[idx]) { xSemaphoreGive(_mutex); return; }
@@ -165,6 +173,13 @@ void MotionController::moveTo(AxisId axis, float deg, bool relative) {
     if (_estop) return;
     int idx = (int)axis;
 
+    if (_stepperReleased[idx]) {
+        uint8_t pin = (axis == AxisId::PAN) ? PAN_EN_PIN : TILT_EN_PIN;
+        digitalWrite(pin, LOW);
+        _stepperReleased[idx] = false;
+        _stopTimeMs[idx]      = 0;
+    }
+
     xSemaphoreTake(_mutex, portMAX_DELAY);
 
     if (!_stepper[idx]) { xSemaphoreGive(_mutex); return; }
@@ -211,6 +226,8 @@ void MotionController::emergencyStop() {
 
 void MotionController::clearEstop() {
     _estop = false;
+    _stepperReleased[0] = _stepperReleased[1] = false;
+    _stopTimeMs[0]      = _stopTimeMs[1]      = 0;
     enableAll(true);
 }
 
@@ -281,6 +298,25 @@ void MotionController::motionTask(void* param) {
                 }
             }
         }
+
+        // Stepper hold timeout — release EN pins after STEPPER_HOLD_MS of idle.
+#if STEPPER_HOLD_MS > 0
+        for (int i = 0; i < 2; i++) {
+            if (!mc->_stepper[i] || mc->_estop) continue;
+            if (mc->_stepper[i]->isRunning()) {
+                mc->_stopTimeMs[i]      = 0;
+                mc->_stepperReleased[i] = false;
+            } else if (!mc->_stepperReleased[i]) {
+                if (mc->_stopTimeMs[i] == 0)
+                    mc->_stopTimeMs[i] = millis() ?: 1;  // non-zero sentinel
+                else if (millis() - mc->_stopTimeMs[i] >= STEPPER_HOLD_MS) {
+                    uint8_t pin = (i == 0) ? PAN_EN_PIN : TILT_EN_PIN;
+                    digitalWrite(pin, HIGH);  // A4988: HIGH = disabled
+                    mc->_stepperReleased[i] = true;
+                }
+            }
+        }
+#endif
 
         // Velocity watchdog — stop all axes if Pi goes silent while motors run.
         // Catches dropped stop commands; fires after VEL_WATCHDOG_MS of no vel cmds.

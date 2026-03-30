@@ -75,6 +75,8 @@ private:
     int8_t                 _lastDir[2]      = {0, 0};  // -1, 0, +1 per axis
     bool                   _estop           = false;
     volatile uint32_t      _lastVelCmdMs    = 0;       // watchdog timestamp
+    bool                   _stepperReleased[2] = {false, false};
+    uint32_t               _stopTimeMs[2]      = {0, 0};
     SemaphoreHandle_t      _mutex           = nullptr;
 
     float   stepsPerDeg(AxisId axis)               const;
