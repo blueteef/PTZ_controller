@@ -24,6 +24,21 @@
 #define PAN_EN_PIN       14
 
 // -----------------------------------------------------------------------------
+// TMC2209 UART (Serial1, half-duplex)
+//   Wiring: GPIO4 (TX) → 1kΩ → PDN_UART on both drivers
+//           GPIO13 (RX) → PDN_UART on both drivers (direct)
+//   Address: Pan  driver MS1=LOW  MS2=LOW  → addr 0
+//            Tilt driver MS1=HIGH MS2=LOW  → addr 1
+// -----------------------------------------------------------------------------
+#define TMC_UART_RX_PIN   13
+#define TMC_UART_TX_PIN   4
+#define TMC_R_SENSE       0.11f   // BTT TMC2209 V1.3 sense resistor (Ω)
+#define TMC_PAN_ADDR      0       // set by MS1=LOW  MS2=LOW
+#define TMC_TILT_ADDR     1       // set by MS1=HIGH MS2=LOW
+#define TMC_PAN_RMS_MA    700     // RMS current for pan  axis (mA) — tune to taste
+#define TMC_TILT_RMS_MA   700     // RMS current for tilt axis (mA)
+
+// -----------------------------------------------------------------------------
 // Pi UART (Serial2) — direct GPIO link, no USB cable needed.
 //   Pi GPIO14 (TX) → ESP32 GPIO19 (RX)
 //   Pi GPIO15 (RX) ← ESP32 GPIO21 (TX)
@@ -37,7 +52,7 @@
 // Motor / gearing — physical hardware, do not change without rewiring.
 // -----------------------------------------------------------------------------
 #define MOTOR_STEPS_PER_REV   200       // 1.8°/step NEMA17
-#define DEFAULT_MICROSTEPS    16        // A4988: MS1/MS2/MS3 all HIGH → 1/16
+#define DEFAULT_MICROSTEPS    16        // STEP-pin resolution; TMC2209 interpolates to 256x internally
 
 // Pan  gear ratio  144:17  ≈ 8.47:1  (output : motor)
 #define PAN_GEAR_RATIO_NUM    144

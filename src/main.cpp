@@ -5,9 +5,10 @@
 // ─────────────
 //   1. USB Serial initialised
 //   2. Status LED initialised
-//   3. MotionController initialised (FastAccelStepper, A4988 drivers)
-//   4. CLI initialised
-//   5. FreeRTOS tasks created
+//   3. TMC2209 drivers configured over UART (current, StealthChop, interpolation)
+//   4. MotionController initialised (FastAccelStepper)
+//   5. CLI initialised
+//   6. FreeRTOS tasks created
 //
 // Control
 // ───────
@@ -25,6 +26,7 @@
 #include "motion/MotionController.h"
 #include "cli/CLI.h"
 #include "peripherals/StatusLED.h"
+#include "peripherals/TMCDriver.h"
 
 static MotionController gMotion;
 static StatusLED        gLED;
@@ -40,6 +42,13 @@ void setup() {
 
     gLED.begin();
     gLED.setPattern(LEDPattern::FAST_BLINK);
+
+    // TMC2209 must be configured before MotionController enables the drivers.
+    if (!TMCDriver::begin()) {
+        Serial.println("[WARN] One or more TMC2209 drivers did not respond — check wiring");
+        // Non-fatal: steppers may still move if STEP/DIR/EN are correct,
+        // just without UART-configured current/mode settings.
+    }
 
     if (!gMotion.begin()) {
         Serial.println("[FATAL] MotionController init failed — halting");
