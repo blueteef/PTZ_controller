@@ -26,11 +26,11 @@
 // -----------------------------------------------------------------------------
 // TMC2209 UART (Serial1, half-duplex)
 //   Wiring: GPIO4  (TX) → PDN (TX header pin, has onboard 1kΩ) on both drivers
-//           GPIO18 (RX) → PDN (RX header pin, direct) on both drivers
+//           GPIO17 (RX) → PDN (RX header pin, direct) on both drivers
 //   Address: Pan  driver MS1=LOW  MS2=LOW  → addr 0
 //            Tilt driver MS1=HIGH MS2=LOW  → addr 1
 // -----------------------------------------------------------------------------
-#define TMC_UART_RX_PIN   18
+#define TMC_UART_RX_PIN   17
 #define TMC_UART_TX_PIN   4
 #define TMC_R_SENSE       0.11f   // BTT TMC2209 V1.3 sense resistor (Ω)
 #define TMC_PAN_ADDR      0       // set by MS1=LOW  MS2=LOW
