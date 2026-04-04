@@ -18,7 +18,7 @@ let _img    = null;
 let _detections = [];
 
 let _hudEnabled          = true;    // on at boot
-let _hudLockRoll         = false;
+let _hudLockRoll         = true;    // locked until roll is calibrated
 let _detectionModeActive = false;
 
 // Latest sensor inputs (set by app.js)
@@ -262,14 +262,14 @@ function _drawInfoStrip(w, h) {
 
   const text = parts.join("   \u2502   ");
   const ctx  = _ctx;
-  const y    = h - TAPE_H - 8;
+  const y    = h - TAPE_H - 10;
 
-  ctx.font = "11px monospace";
+  ctx.font = "22px monospace";
   ctx.textAlign    = "center";
   ctx.textBaseline = "bottom";
-  const tw = ctx.measureText(text).width + 16;
+  const tw = ctx.measureText(text).width + 24;
   ctx.fillStyle = "rgba(0,0,0,0.55)";
-  ctx.fillRect(w / 2 - tw / 2, y - 14, tw, 16);
+  ctx.fillRect(w / 2 - tw / 2, y - 26, tw, 30);
   ctx.fillStyle = "rgba(220,220,220,0.85)";
   ctx.fillText(text, w / 2, y);
 }
@@ -286,9 +286,9 @@ function _drawGimbalReadout(w, h) {
   const panStr  = `PAN  ${pan  >= 0 ? "+" : ""}${pan.toFixed(1)}\u00B0`;
   const tiltStr = `TILT ${tilt >= 0 ? "+" : ""}${tilt.toFixed(1)}\u00B0`;
 
-  ctx.font = "bold 13px monospace";
-  const lw = Math.max(ctx.measureText(panStr).width, ctx.measureText(tiltStr).width) + 14;
-  const lh = 36;
+  ctx.font = "bold 26px monospace";
+  const lw = Math.max(ctx.measureText(panStr).width, ctx.measureText(tiltStr).width) + 20;
+  const lh = 68;
 
   ctx.fillStyle = "rgba(0,0,0,0.55)";
   ctx.fillRect(8, 8, lw, lh);
@@ -296,8 +296,8 @@ function _drawGimbalReadout(w, h) {
   ctx.fillStyle    = "#29b6f6";
   ctx.textAlign    = "left";
   ctx.textBaseline = "top";
-  ctx.fillText(panStr,  14, 11);
-  ctx.fillText(tiltStr, 14, 26);
+  ctx.fillText(panStr,  16, 12);
+  ctx.fillText(tiltStr, 16, 44);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -322,30 +322,30 @@ function _drawHorizon(w, h, roll, pitch) {
     if (p === 0) continue;
     const py    = pitchOffset + p * pxPerDeg;
     const major = p % 10 === 0;
-    const len   = major ? 60 : 30;
+    const len   = major ? 120 : 60;
     ctx.strokeStyle = "rgba(255,255,255,0.35)";
-    ctx.lineWidth   = major ? 1.5 : 1;
+    ctx.lineWidth   = major ? 3 : 2;
     ctx.beginPath(); ctx.moveTo(-len, py); ctx.lineTo(len, py); ctx.stroke();
     if (major) {
       const lbl = String(Math.abs(p));
-      ctx.font = "10px monospace"; ctx.fillStyle = "rgba(255,255,255,0.5)";
-      ctx.textAlign = "left";  ctx.textBaseline = "middle"; ctx.fillText(lbl,  len + 5, py);
-      ctx.textAlign = "right"; ctx.fillText(lbl, -len - 5, py);
+      ctx.font = "20px monospace"; ctx.fillStyle = "rgba(255,255,255,0.5)";
+      ctx.textAlign = "left";  ctx.textBaseline = "middle"; ctx.fillText(lbl,  len + 8, py);
+      ctx.textAlign = "right"; ctx.fillText(lbl, -len - 8, py);
     }
   }
 
   // Horizon line — amber, split
   const lineLen = w * 0.28;
-  const gap     = 52;
-  ctx.strokeStyle = "rgba(255,190,0,0.9)"; ctx.lineWidth = 2;
+  const gap     = 80;
+  ctx.strokeStyle = "rgba(255,190,0,0.9)"; ctx.lineWidth = 4;
   ctx.beginPath(); ctx.moveTo(-lineLen, pitchOffset); ctx.lineTo(-gap, pitchOffset); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(gap, pitchOffset);      ctx.lineTo(lineLen, pitchOffset); ctx.stroke();
 
   // Aircraft symbol
-  ctx.strokeStyle = "#29b6f6"; ctx.lineWidth = 2.5;
-  ctx.beginPath(); ctx.moveTo(-42, 0); ctx.lineTo(-18, 0); ctx.lineTo(-12, 7); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo( 42, 0); ctx.lineTo( 18, 0); ctx.lineTo( 12, 7); ctx.stroke();
-  ctx.beginPath(); ctx.arc(0, 0, 3, 0, Math.PI * 2); ctx.fillStyle = "#29b6f6"; ctx.fill();
+  ctx.strokeStyle = "#29b6f6"; ctx.lineWidth = 5;
+  ctx.beginPath(); ctx.moveTo(-80, 0); ctx.lineTo(-36, 0); ctx.lineTo(-24, 14); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo( 80, 0); ctx.lineTo( 36, 0); ctx.lineTo( 24, 14); ctx.stroke();
+  ctx.beginPath(); ctx.arc(0, 0, 6, 0, Math.PI * 2); ctx.fillStyle = "#29b6f6"; ctx.fill();
 
   ctx.restore();
 }
