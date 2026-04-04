@@ -41,11 +41,59 @@
       <!-- Control sidebar -->
       <aside id="sidebar">
 
-        <!-- Virtual joystick -->
-        <section>
-          <h3>Joystick</h3>
-          <canvas id="joystick" width="160" height="160"></canvas>
-          <p class="hint">Drag or use WASD keys</p>
+        <!-- Telemetry dashboard -->
+        <section id="dashboard">
+          <h3>Telemetry</h3>
+
+          <div class="dash-group">
+            <div class="dash-label">Gimbal</div>
+            <div class="dash-row">
+              <span class="dash-key">Pan</span><span id="d-pan"  class="dash-val">—</span>
+              <span class="dash-key">Tilt</span><span id="d-tilt" class="dash-val">—</span>
+            </div>
+          </div>
+
+          <div class="dash-group" id="dg-power">
+            <div class="dash-label">Power</div>
+            <div class="dash-row">
+              <span class="dash-key">Vin</span><span  id="d-vin"  class="dash-val">—</span>
+              <span class="dash-key">Curr</span><span id="d-curr" class="dash-val">—</span>
+            </div>
+            <div class="dash-row">
+              <span class="dash-key">Pwr</span><span id="d-pwr" class="dash-val">—</span>
+            </div>
+          </div>
+
+          <div class="dash-group" id="dg-env">
+            <div class="dash-label">Environment</div>
+            <div class="dash-row">
+              <span class="dash-key">Temp</span><span  id="d-temp"  class="dash-val">—</span>
+              <span class="dash-key">Press</span><span id="d-press" class="dash-val">—</span>
+            </div>
+            <div class="dash-row">
+              <span class="dash-key">Alt</span><span id="d-alt" class="dash-val">—</span>
+            </div>
+          </div>
+
+          <div class="dash-group" id="dg-gps">
+            <div class="dash-label">GPS</div>
+            <div class="dash-row">
+              <span class="dash-key">Fix</span><span  id="d-gps-fix"  class="dash-val">—</span>
+              <span class="dash-key">Sats</span><span id="d-gps-sats" class="dash-val">—</span>
+            </div>
+            <div class="dash-row">
+              <span class="dash-key">Lat</span><span id="d-gps-lat" class="dash-val">—</span>
+            </div>
+            <div class="dash-row">
+              <span class="dash-key">Lon</span><span id="d-gps-lon" class="dash-val">—</span>
+            </div>
+            <div class="dash-row">
+              <span class="dash-key">Hdg</span><span id="d-gps-hdg" class="dash-val">—</span>
+              <span class="dash-key">Spd</span><span id="d-gps-spd" class="dash-val">—</span>
+            </div>
+          </div>
+
+          <p class="hint">WASD / arrow keys to move</p>
         </section>
 
         <!-- Buttons -->
@@ -109,13 +157,6 @@
           <label class="toggle-row"><input type="checkbox" id="tilt-invert"> Tilt</label>
         </section>
 
-        <!-- Sensors -->
-        <section id="sensor-section">
-          <h3>Sensors</h3>
-          <div id="sensor-power" class="sensor-row hint">Power: —</div>
-          <div id="sensor-env"   class="sensor-row hint">Env: —</div>
-          <div id="sensor-gps"   class="sensor-row hint">GPS: —</div>
-        </section>
 
       </aside>
     </div>

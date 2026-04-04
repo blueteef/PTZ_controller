@@ -8,7 +8,7 @@
  *  - Export send() for other modules to use
  */
 
-import { initJoystick, stopSending } from "./controls.js";
+import { stopSending } from "./controls.js";
 import { initOverlay, updateDetections } from "./detection_overlay.js";
 
 // ---------------------------------------------------------------------------
@@ -95,25 +95,31 @@ function setTrackingStatus(active) {
 function setPosition(pan, tilt) {
   document.getElementById("pos-display").textContent =
     `pan ${pan.toFixed(1)}°  tilt ${tilt.toFixed(1)}°`;
+  document.getElementById("d-pan").textContent  = `${pan.toFixed(1)}°`;
+  document.getElementById("d-tilt").textContent = `${tilt.toFixed(1)}°`;
 }
 
 function updateSensorPower(p) {
-  document.getElementById("sensor-power").textContent =
-    `Power: ${p.vin.toFixed(2)} V  ${p.curr.toFixed(0)} mA  ${(p.pwr / 1000).toFixed(2)} W`;
+  document.getElementById("d-vin").textContent  = `${p.vin.toFixed(2)} V`;
+  document.getElementById("d-curr").textContent = `${p.curr.toFixed(0)} mA`;
+  document.getElementById("d-pwr").textContent  = `${(p.pwr / 1000).toFixed(2)} W`;
 }
 
 function updateSensorEnv(e) {
-  document.getElementById("sensor-env").textContent =
-    `Env: ${e.temp.toFixed(1)} °C  ${e.press.toFixed(1)} hPa  ${e.alt.toFixed(0)} m`;
+  document.getElementById("d-temp").textContent  = `${e.temp.toFixed(1)} °C`;
+  document.getElementById("d-press").textContent = `${e.press.toFixed(1)} hPa`;
+  document.getElementById("d-alt").textContent   = `${e.alt.toFixed(0)} m`;
 }
 
 function updateSensorGPS(g) {
-  const fix = g.fix ? `fix ${g.sats} sats` : "no fix";
-  const pos = g.fix
-    ? `${g.lat.toFixed(5)}, ${g.lon.toFixed(5)}`
-    : "—";
-  document.getElementById("sensor-gps").textContent =
-    `GPS: ${fix}  ${pos}  hdg ${g.hdg.toFixed(0)}°`;
+  const fixEl = document.getElementById("d-gps-fix");
+  fixEl.textContent = g.fix ? "YES" : "NO";
+  fixEl.className   = "dash-val " + (g.fix ? "ok" : "bad");
+  document.getElementById("d-gps-sats").textContent = g.sats;
+  document.getElementById("d-gps-lat").textContent  = g.fix ? g.lat.toFixed(6) : "—";
+  document.getElementById("d-gps-lon").textContent  = g.fix ? g.lon.toFixed(6) : "—";
+  document.getElementById("d-gps-hdg").textContent  = `${g.hdg.toFixed(0)}°`;
+  document.getElementById("d-gps-spd").textContent  = `${g.spd.toFixed(1)} kts`;
 }
 
 // ---------------------------------------------------------------------------
@@ -326,7 +332,6 @@ window.addEventListener("DOMContentLoaded", async () => {
   wireInvertToggles();
   wireFaceRecognition();
   loadFaces();
-  initJoystick(document.getElementById("joystick"));
   initOverlay(
     document.getElementById("feed"),
     document.getElementById("overlay"),

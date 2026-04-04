@@ -179,17 +179,12 @@ class ESPBridge:
 
             self._port.write(protocol.cmd_get_position().encode())
             self._port.flush()
-            # Read response lines; handle any $ lines that arrive mid-response
             buf = []
-            for _ in range(4):
+            for _ in range(2):
                 line = self._port.readline().decode(errors="replace")
                 if not line:
                     break
-                stripped = line.strip()
-                if stripped.startswith("$"):
-                    self._parse_sensor_line(stripped)
-                else:
-                    buf.append(line)
+                buf.append(line)
             result = protocol.parse_position("".join(buf))
             if result:
                 state.set_gimbal_position(result[0], result[1])
