@@ -323,12 +323,12 @@ function _drawHorizon(w, h, roll, pitch) {
     const py    = pitchOffset + p * pxPerDeg;
     const major = p % 10 === 0;
     const len   = major ? 120 : 60;
-    ctx.strokeStyle = "rgba(255,255,255,0.35)";
+    ctx.strokeStyle = major ? "rgba(255,255,255,0.80)" : "rgba(255,255,255,0.50)";
     ctx.lineWidth   = major ? 3 : 2;
     ctx.beginPath(); ctx.moveTo(-len, py); ctx.lineTo(len, py); ctx.stroke();
     if (major) {
       const lbl = String(Math.abs(p));
-      ctx.font = "20px monospace"; ctx.fillStyle = "rgba(255,255,255,0.5)";
+      ctx.font = "20px monospace"; ctx.fillStyle = "rgba(255,255,255,0.85)";
       ctx.textAlign = "left";  ctx.textBaseline = "middle"; ctx.fillText(lbl,  len + 8, py);
       ctx.textAlign = "right"; ctx.fillText(lbl, -len - 8, py);
     }
@@ -340,12 +340,6 @@ function _drawHorizon(w, h, roll, pitch) {
   ctx.strokeStyle = "rgba(255,190,0,0.9)"; ctx.lineWidth = 4;
   ctx.beginPath(); ctx.moveTo(-lineLen, pitchOffset); ctx.lineTo(-gap, pitchOffset); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(gap, pitchOffset);      ctx.lineTo(lineLen, pitchOffset); ctx.stroke();
-
-  // Aircraft symbol
-  ctx.strokeStyle = "#29b6f6"; ctx.lineWidth = 5;
-  ctx.beginPath(); ctx.moveTo(-80, 0); ctx.lineTo(-36, 0); ctx.lineTo(-24, 14); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo( 80, 0); ctx.lineTo( 36, 0); ctx.lineTo( 24, 14); ctx.stroke();
-  ctx.beginPath(); ctx.arc(0, 0, 6, 0, Math.PI * 2); ctx.fillStyle = "#29b6f6"; ctx.fill();
 
   ctx.restore();
 }
