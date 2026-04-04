@@ -11,9 +11,14 @@ from pathlib import Path
 # Load .env file if present (must happen before any os.getenv calls)
 try:
     from dotenv import load_dotenv
-    load_dotenv(Path(__file__).parent.parent / ".env")
+    load_dotenv(Path(__file__).parent.parent / ".env", override=True)
 except ImportError:
     pass
+
+
+def _env_bool(key: str, default: str = "false") -> bool:
+    """Read a boolean env var robustly — strips whitespace, case-insensitive."""
+    return os.getenv(key, default).strip().lower() == "true"
 
 # ---------------------------------------------------------------------------
 # Paths
@@ -114,15 +119,15 @@ FINE_SPEED_SCALE = float(os.getenv("FINE_SPEED_SCALE",  "0.2"))
 
 # Axis direction invert — flips the DIR pin on the ESP32 A4988 driver.
 # Set in .env: PAN_INVERT=true  or  TILT_INVERT=true
-PAN_INVERT  = os.getenv("PAN_INVERT",  "false").lower() == "true"
-TILT_INVERT = os.getenv("TILT_INVERT", "false").lower() == "true"
+PAN_INVERT  = _env_bool("PAN_INVERT")
+TILT_INVERT = _env_bool("TILT_INVERT")
 
 # Soft limits (degrees at output shaft)
 PAN_SOFT_LIMIT_MIN  = float(os.getenv("PAN_SOFT_LIMIT_MIN",  "-180.0"))
 PAN_SOFT_LIMIT_MAX  = float(os.getenv("PAN_SOFT_LIMIT_MAX",   "180.0"))
 TILT_SOFT_LIMIT_MIN = float(os.getenv("TILT_SOFT_LIMIT_MIN",  "-45.0"))
 TILT_SOFT_LIMIT_MAX = float(os.getenv("TILT_SOFT_LIMIT_MAX",   "90.0"))
-SOFT_LIMITS_ENABLED = os.getenv("SOFT_LIMITS_ENABLED", "false").lower() == "true"
+SOFT_LIMITS_ENABLED = _env_bool("SOFT_LIMITS_ENABLED")
 
 # How long to hold stepper current after motors stop (ms). 0 = hold forever.
 # A4988 has no current-reduction mode — releasing EN eliminates heat and whine.
