@@ -74,6 +74,9 @@ function handleMessage(msg) {
     case "detections":
       updateDetections(msg.objects);
       break;
+    case "compass_calibrated":
+      console.log(`Compass offset → ${msg.offset.toFixed(2)}°`);
+      break;
     case "error":
       console.warn("Server error:", msg.message);
       break;
@@ -144,6 +147,36 @@ function updateSensorMag(m) {
     el.textContent = "ERR";
     el.className = "dash-val bad";
   }
+}
+
+function wireCompassCal() {
+  const input  = document.getElementById("compass-cal-input");
+  const btn    = document.getElementById("btn-compass-cal");
+  const hdgEl  = document.getElementById("d-mag-hdg");
+
+  // Pre-fill with current reading when user clicks into the box
+  input.onfocus = () => {
+    if (!input.value) {
+      const cur = parseFloat(hdgEl.textContent);
+      if (!isNaN(cur)) input.value = cur.toFixed(1);
+    }
+  };
+
+  btn.onclick = () => {
+    const known = parseFloat(input.value);
+    if (isNaN(known)) return;
+    send({ type: "calibrate_compass", heading: ((known % 360) + 360) % 360 });
+    input.value = "";
+    btn.textContent = "✓";
+    setTimeout(() => { btn.textContent = "Set"; }, 1500);
+  };
+
+  // Also handle compass_calibrated confirmation from server
+  window._compassCalHandler = (msg) => {
+    if (msg.type === "compass_calibrated") {
+      log.debug?.("Compass offset updated to", msg.offset);
+    }
+  };
 }
 
 function updateSensorGPS(g) {
@@ -420,6 +453,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   wireAccelSlider();
   wireInvertToggles();
   wireStabilization();
+  wireCompassCal();
   wireFaceRecognition();
   loadFaces();
   initOverlay(

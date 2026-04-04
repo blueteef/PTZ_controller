@@ -27,6 +27,8 @@ import logging
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
+from pathlib import Path
+
 from app import config
 from app.state import state
 
@@ -174,6 +176,17 @@ async def _handle_message(ws: WebSocket, raw: str) -> None:
         enabled = bool(msg.get("enabled", False))
         pipeline.set_recognition(enabled)
 
+    elif t == "calibrate_compass":
+        known = float(msg.get("heading", 0)) % 360.0
+        current = state.sensor_mag.get("hdg", 0.0)
+        delta = (known - current + 540.0) % 360.0 - 180.0   # signed shortest path
+        new_offset = (config.MAG_HDG_OFFSET_DEG + delta) % 360.0
+        config.MAG_HDG_OFFSET_DEG = new_offset
+        _update_env_key("MAG_HDG_OFFSET_DEG", f"{new_offset:.2f}")
+        log.info("Compass calibrated: known=%.1f current=%.1f delta=%.1f new_offset=%.2f",
+                 known, current, delta, new_offset)
+        await ws.send_json({"type": "compass_calibrated", "offset": new_offset})
+
     elif t == "set_stabilization":
         state.stab_roll_enabled  = bool(msg.get("roll",    False))
         state.stab_pitch_enabled = bool(msg.get("pitch",   False))
@@ -181,3 +194,25 @@ async def _handle_message(ws: WebSocket, raw: str) -> None:
 
     else:
         await ws.send_json(make_error(f"Unknown message type: '{t}'"))
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def _update_env_key(key: str, value: str) -> None:
+    """Upsert a single key in pi/.env without touching other lines."""
+    env_path = Path(config.PI_DIR) / ".env"
+    lines = env_path.read_text().splitlines() if env_path.exists() else []
+    written = False
+    new_lines = []
+    for line in lines:
+        k = line.split("=", 1)[0].strip()
+        if k == key:
+            new_lines.append(f"{key}={value}")
+            written = True
+        else:
+            new_lines.append(line)
+    if not written:
+        new_lines.append(f"{key}={value}")
+    env_path.write_text("\n".join(new_lines) + "\n")
