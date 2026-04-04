@@ -243,17 +243,18 @@ def main() -> None:
     # Step 2 — Roll axis check
     # ════════════════════════════════════════════════════════════════════════
     _section("Roll axis direction", 2, 5)
-    print("  Slowly TILT THE CAMERA LEFT (left side down) and back to level.")
-    print("  Watch which way ROLL moves:\n")
+    print("  The gimbal has no roll motor, so you'll do this by hand.")
+    print("  Pick up or tip the entire rig so the LEFT side goes DOWN,")
+    print("  then bring it back level.  Watch which way ROLL moves:\n")
     try:
         _watch(8)
     except KeyboardInterrupt:
         print()
 
     print()
-    print("  Convention: tilting LEFT should read NEGATIVE roll.")
+    print("  Convention: left side down should read NEGATIVE roll.")
     ans = _ask(
-        "  When you tilted left, did roll go POSITIVE or NEGATIVE?  [pos / neg / skip]: ",
+        "  When the left side was down, did roll go POSITIVE or NEGATIVE?  [pos / neg / skip]: ",
         ["pos", "negative", "neg", "positive", "skip"],
     )
     if ans in ("pos", "positive"):
@@ -269,17 +270,17 @@ def main() -> None:
     # Step 3 — Pitch axis check
     # ════════════════════════════════════════════════════════════════════════
     _section("Pitch axis direction", 3, 5)
-    print("  Slowly TILT THE CAMERA FORWARD (lens/nose pointing down) and back.")
-    print("  Watch which way PITCH moves:\n")
+    print("  Use the TILT motor to tilt the camera FORWARD (lens pointing down),")
+    print("  then back to level.  Watch which way PITCH moves:\n")
     try:
         _watch(8)
     except KeyboardInterrupt:
         print()
 
     print()
-    print("  Convention: tilting FORWARD (nose down) should read NEGATIVE pitch.")
+    print("  Convention: nose/lens pointing down should read NEGATIVE pitch.")
     ans = _ask(
-        "  When you tilted forward, did pitch go POSITIVE or NEGATIVE?  [pos / neg / skip]: ",
+        "  When tilted forward (nose down), did pitch go POSITIVE or NEGATIVE?  [pos / neg / skip]: ",
         ["pos", "negative", "neg", "positive", "skip"],
     )
     if ans in ("pos", "positive"):
@@ -318,7 +319,7 @@ def main() -> None:
 
     print()
     ans = _ask(
-        "  Did tilting FORWARD change ROLL (not pitch)?  [y / n / skip]: ",
+        "  When you ran the TILT motor, did ROLL change (instead of pitch)?  [y / n / skip]: ",
         ["y", "n", "yes", "no", "skip"],
     )
     if ans in ("y", "yes"):
@@ -345,7 +346,7 @@ def main() -> None:
     print(f"  Reading: {hdg_a:.1f}°")
 
     print()
-    print("  Now slowly rotate the gimbal 90° CLOCKWISE (to the right) and hold.")
+    print("  Now use the PAN motor to rotate ~90° CLOCKWISE (to the right) and hold.")
     input("  Press ENTER when steady … ")
     _, _, hdg_b = _sample(15)
     print(f"  Reading: {hdg_b:.1f}°")
