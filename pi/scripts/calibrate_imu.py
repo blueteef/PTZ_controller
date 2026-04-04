@@ -96,18 +96,25 @@ def _sample(n: int = 15, interval: float = 0.06) -> tuple[float, float, float]:
     return sum(rolls) / len(rolls), sum(pitches) / len(pitches), hdg_avg
 
 
-def _watch(seconds: int = 8) -> None:
-    """Print live roll/pitch/heading for `seconds` seconds."""
-    end = time.monotonic() + seconds
-    while time.monotonic() < end:
-        r, p, h = _imu["roll"], _imu["pitch"], _mag["hdg"]
-        remaining = max(0, int(end - time.monotonic()))
-        print(
-            f"\r  roll={r:+7.1f}°  pitch={p:+7.1f}°  heading={h:5.1f}°  [{remaining:2d}s] ",
-            end="", flush=True,
-        )
-        time.sleep(0.1)
-    print()
+def _watch_until_enter() -> None:
+    """Print live roll/pitch/heading until the user presses Enter."""
+    stop = threading.Event()
+
+    def _display() -> None:
+        while not stop.is_set():
+            r, p, h = _imu["roll"], _imu["pitch"], _mag["hdg"]
+            print(
+                f"\r  roll={r:+7.1f}°  pitch={p:+7.1f}°  heading={h:5.1f}°  [press ENTER when done]  ",
+                end="", flush=True,
+            )
+            time.sleep(0.1)
+        print()
+
+    t = threading.Thread(target=_display, daemon=True)
+    t.start()
+    input()
+    stop.set()
+    t.join(timeout=0.5)
 
 
 def _ask(prompt: str, choices: list[str]) -> str:
@@ -225,11 +232,7 @@ def main() -> None:
     _section("Level baseline", 1, 5)
     print("  Place the camera head FLAT AND LEVEL, aimed straight forward.")
     print("  Watch the live readings while you settle it, then press ENTER.\n")
-    try:
-        _watch(6)
-    except KeyboardInterrupt:
-        pass
-    input("  Press ENTER when stable and level … ")
+    _watch_until_enter()
     roll0, pitch0, hdg0 = _sample(20)
     print(f"\n  Baseline →  roll={roll0:+.1f}°  pitch={pitch0:+.1f}°  heading={hdg0:.1f}°")
 
@@ -245,11 +248,8 @@ def main() -> None:
     _section("Roll axis direction", 2, 5)
     print("  The gimbal has no roll motor, so you'll do this by hand.")
     print("  Pick up or tip the entire rig so the LEFT side goes DOWN,")
-    print("  then bring it back level.  Watch which way ROLL moves:\n")
-    try:
-        _watch(8)
-    except KeyboardInterrupt:
-        print()
+    print("  then bring it back level.  Press ENTER when done.\n")
+    _watch_until_enter()
 
     print()
     print("  Convention: left side down should read NEGATIVE roll.")
@@ -271,11 +271,8 @@ def main() -> None:
     # ════════════════════════════════════════════════════════════════════════
     _section("Pitch axis direction", 3, 5)
     print("  Use the TILT motor to tilt the camera FORWARD (lens pointing down),")
-    print("  then back to level.  Watch which way PITCH moves:\n")
-    try:
-        _watch(8)
-    except KeyboardInterrupt:
-        print()
+    print("  then back to level.  Press ENTER when done.\n")
+    _watch_until_enter()
 
     print()
     print("  Convention: nose/lens pointing down should read NEGATIVE pitch.")
@@ -296,12 +293,8 @@ def main() -> None:
     # Step 4 — Axis swap check
     # ════════════════════════════════════════════════════════════════════════
     _section("Axis swap check", 4, 5)
-    print("  Place the camera FLAT AND LEVEL again.")
-    print("  Watch the readings for a few seconds:\n")
-    try:
-        _watch(5)
-    except KeyboardInterrupt:
-        print()
+    print("  Place the camera FLAT AND LEVEL again.  Press ENTER when settled.\n")
+    _watch_until_enter()
 
     roll_now, pitch_now, _ = _sample(10)
     print(f"\n  Level reading: roll={roll_now:+.1f}°  pitch={pitch_now:+.1f}°")
