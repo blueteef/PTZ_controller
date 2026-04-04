@@ -65,6 +65,7 @@ function handleMessage(msg) {
       if (msg.gps)   updateSensorGPS(msg.gps);
       if (msg.imu)   updateSensorIMU(msg.imu);
       if (msg.mag)   updateSensorMag(msg.mag);
+      syncStabCheckboxes(msg);
       break;
     case "detections":
       updateDetections(msg.objects);
@@ -150,6 +151,32 @@ function updateSensorGPS(g) {
   document.getElementById("d-gps-lon").textContent  = g.fix ? g.lon.toFixed(6) : "—";
   document.getElementById("d-gps-hdg").textContent  = `${g.hdg.toFixed(0)}°`;
   document.getElementById("d-gps-spd").textContent  = `${g.spd_mph.toFixed(1)} mph`;
+}
+
+// ---------------------------------------------------------------------------
+// Stabilization checkboxes
+// ---------------------------------------------------------------------------
+
+function syncStabCheckboxes(msg) {
+  // Keep checkboxes in sync when a second client connects or after reconnect.
+  if (msg.stab_roll    !== undefined) document.getElementById("stab-roll").checked    = msg.stab_roll;
+  if (msg.stab_pitch   !== undefined) document.getElementById("stab-pitch").checked   = msg.stab_pitch;
+  if (msg.stab_heading !== undefined) document.getElementById("stab-heading").checked = msg.stab_heading;
+}
+
+function _sendStab() {
+  send({
+    type:    "set_stabilization",
+    roll:    document.getElementById("stab-roll").checked,
+    pitch:   document.getElementById("stab-pitch").checked,
+    heading: document.getElementById("stab-heading").checked,
+  });
+}
+
+function wireStabilization() {
+  document.getElementById("stab-roll").onchange    = _sendStab;
+  document.getElementById("stab-pitch").onchange   = _sendStab;
+  document.getElementById("stab-heading").onchange = _sendStab;
 }
 
 // ---------------------------------------------------------------------------
@@ -360,6 +387,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   wireSpeedSlider();
   wireAccelSlider();
   wireInvertToggles();
+  wireStabilization();
   wireFaceRecognition();
   loadFaces();
   initOverlay(

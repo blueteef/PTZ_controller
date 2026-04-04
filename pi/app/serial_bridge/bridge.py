@@ -225,16 +225,24 @@ class ESPBridge:
                 }
             elif line.startswith("$IMU "):
                 kv = _parse_kv(line[5:])
+                roll  = float(kv.get("roll",  0)) * config.IMU_ROLL_SIGN
+                pitch = float(kv.get("pitch", 0)) * config.IMU_PITCH_SIGN
+                if config.IMU_SWAP_ROLL_PITCH:
+                    roll, pitch = pitch, roll
                 state.sensor_imu = {
-                    "ok":    int(kv.get("ok",    0)),
-                    "roll":  float(kv.get("roll",  0)),
-                    "pitch": float(kv.get("pitch", 0)),
+                    "ok":    int(kv.get("ok", 0)),
+                    "roll":  roll,
+                    "pitch": pitch,
                 }
             elif line.startswith("$MAG "):
                 kv = _parse_kv(line[5:])
+                hdg = float(kv.get("hdg", 0))
+                if config.MAG_HDG_INVERT:
+                    hdg = (360.0 - hdg) % 360.0
+                hdg = (hdg + config.MAG_HDG_OFFSET_DEG) % 360.0
                 state.sensor_mag = {
-                    "ok":  int(kv.get("ok",  0)),
-                    "hdg": float(kv.get("hdg", 0)),
+                    "ok":  int(kv.get("ok", 0)),
+                    "hdg": hdg,
                 }
         except (ValueError, KeyError) as e:
             log.debug("sensor parse error on %r: %s", line, e)

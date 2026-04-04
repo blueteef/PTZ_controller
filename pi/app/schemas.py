@@ -66,13 +66,19 @@ def make_telemetry(pan: float, tilt: float,
                    sensor_env:   dict = None,
                    sensor_gps:   dict = None,
                    sensor_imu:   dict = None,
-                   sensor_mag:   dict = None) -> dict:
+                   sensor_mag:   dict = None,
+                   stab_roll:    bool = False,
+                   stab_pitch:   bool = False,
+                   stab_heading: bool = False) -> dict:
     msg: dict = {
         "type": "telemetry",
         "pan": round(pan, 2),
         "tilt": round(tilt, 2),
         "serial_ok": serial_ok,
         "tracking_active": tracking,
+        "stab_roll":    stab_roll,
+        "stab_pitch":   stab_pitch,
+        "stab_heading": stab_heading,
     }
     if sensor_power:
         msg["power"] = sensor_power

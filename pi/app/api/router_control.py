@@ -83,6 +83,9 @@ async def _telemetry_loop(ws: WebSocket) -> None:
                 sensor_gps=state.sensor_gps or None,
                 sensor_imu=state.sensor_imu or None,
                 sensor_mag=state.sensor_mag or None,
+                stab_roll=state.stab_roll_enabled,
+                stab_pitch=state.stab_pitch_enabled,
+                stab_heading=state.stab_heading_lock,
             )
             await ws.send_json(msg)
 
@@ -170,6 +173,11 @@ async def _handle_message(ws: WebSocket, raw: str) -> None:
     elif t == "set_recognition":
         enabled = bool(msg.get("enabled", False))
         pipeline.set_recognition(enabled)
+
+    elif t == "set_stabilization":
+        state.stab_roll_enabled  = bool(msg.get("roll",    False))
+        state.stab_pitch_enabled = bool(msg.get("pitch",   False))
+        state.stab_heading_lock  = bool(msg.get("heading", False))
 
     else:
         await ws.send_json(make_error(f"Unknown message type: '{t}'"))

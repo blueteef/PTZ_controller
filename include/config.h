@@ -126,6 +126,11 @@
 // QMC5883L compass (fixed address 0x0D)
 #define QMC5883L_I2C_ADDR    0x0D
 
+// Complementary filter weight for IMU fusion (roll/pitch/yaw).
+// High-pass on gyro, low-pass on accel/compass.
+// 0.98 ≈ gyro time constant ~2.5 s at 20 Hz.
+#define IMU_COMP_ALPHA       0.98f
+
 // -----------------------------------------------------------------------------
 // FreeRTOS sensor task
 // -----------------------------------------------------------------------------

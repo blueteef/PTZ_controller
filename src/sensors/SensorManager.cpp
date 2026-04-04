@@ -130,14 +130,38 @@ void SensorManager::_feedGPS() {
 
 void SensorManager::_readIMU() {
     if (!_imuOk) return;
+
+    uint32_t now = millis();
+    _imuDtS = (_lastImuMs == 0) ? 0.0f : (now - _lastImuMs) / 1000.0f;
+    _lastImuMs = now;
+
     int16_t ax, ay, az, gx, gy, gz;
     _mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+
     // ±2g range → 16384 LSB/g
     float axg = ax / 16384.0f;
     float ayg = ay / 16384.0f;
     float azg = az / 16384.0f;
-    _data.rollDeg  = atan2f(ayg, azg)                        * 180.0f / (float)M_PI;
-    _data.pitchDeg = atan2f(-axg, sqrtf(ayg*ayg + azg*azg)) * 180.0f / (float)M_PI;
+
+    // ±250°/s range → 131 LSB/°/s
+    float gxDps = gx / 131.0f;
+    float gyDps = gy / 131.0f;
+    _gzDps      = gz / 131.0f;   // shared with _readMag for yaw complementary filter
+
+    float accelRoll  = atan2f(ayg, azg)                        * 180.0f / (float)M_PI;
+    float accelPitch = atan2f(-axg, sqrtf(ayg*ayg + azg*azg)) * 180.0f / (float)M_PI;
+
+    if (_imuDtS > 0.0f && _imuDtS < 0.5f) {
+        // Complementary filter: trust gyro for fast motion, anchor to accel long-term
+        _data.rollDeg  = IMU_COMP_ALPHA * (_data.rollDeg  + gxDps * _imuDtS)
+                       + (1.0f - IMU_COMP_ALPHA) * accelRoll;
+        _data.pitchDeg = IMU_COMP_ALPHA * (_data.pitchDeg + gyDps * _imuDtS)
+                       + (1.0f - IMU_COMP_ALPHA) * accelPitch;
+    } else {
+        // First call or stale reading — seed directly from accelerometer
+        _data.rollDeg  = accelRoll;
+        _data.pitchDeg = accelPitch;
+    }
 }
 
 void SensorManager::_readMag() {
@@ -160,6 +184,24 @@ void SensorManager::_readMag() {
                - mz * sinf(rollR) * cosf(pitchR);
     float hdg = atan2f(-myc, mxc) * 180.0f / (float)M_PI;
     if (hdg < 0.0f) hdg += 360.0f;
+
+    if (_imuDtS > 0.0f && _imuDtS < 0.5f) {
+        // Complementary filter for yaw: gyro integrates fast transients,
+        // compass corrects long-term drift.  Handle 0/360 wrap by blending
+        // on the shortest angular path.
+        float gyroYaw = _data.magHdgDeg + _gzDps * _imuDtS;
+        if (gyroYaw <   0.0f) gyroYaw += 360.0f;
+        if (gyroYaw >= 360.0f) gyroYaw -= 360.0f;
+
+        float diff = hdg - gyroYaw;
+        if (diff >  180.0f) diff -= 360.0f;
+        if (diff < -180.0f) diff += 360.0f;
+
+        hdg = gyroYaw + (1.0f - IMU_COMP_ALPHA) * diff;
+        if (hdg <   0.0f) hdg += 360.0f;
+        if (hdg >= 360.0f) hdg -= 360.0f;
+    }
+
     _data.magHdgDeg = hdg;
 }
 

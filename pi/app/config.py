@@ -134,6 +134,25 @@ SOFT_LIMITS_ENABLED = _env_bool("SOFT_LIMITS_ENABLED")
 STEPPER_HOLD_MS = int(os.getenv("STEPPER_HOLD_MS", "2000"))
 
 # ---------------------------------------------------------------------------
+# IMU / Compass orientation alignment
+# Correct for physical sensor mounting without reflashing the ESP32.
+# ---------------------------------------------------------------------------
+
+# Sign correction: 1 = normal, -1 = flip axis
+IMU_ROLL_SIGN  = float(os.getenv("IMU_ROLL_SIGN",  "1"))
+IMU_PITCH_SIGN = float(os.getenv("IMU_PITCH_SIGN", "1"))
+
+# Swap roll and pitch if sensor is mounted 90° rotated around Z
+IMU_SWAP_ROLL_PITCH = _env_bool("IMU_SWAP_ROLL_PITCH", "false")
+
+# Compass offset (degrees) — corrects for magnetic declination or physical mount offset.
+# Add your local declination (positive = east) or physical rotation here.
+MAG_HDG_OFFSET_DEG = float(os.getenv("MAG_HDG_OFFSET_DEG", "0.0"))
+
+# Invert compass direction (true = flip N/S, useful if sensor mounted backwards)
+MAG_HDG_INVERT = _env_bool("MAG_HDG_INVERT", "false")
+
+# ---------------------------------------------------------------------------
 # Tracking PID
 # ---------------------------------------------------------------------------
 PID_KP             = 2.0     # proportional gain  (error in degrees → deg/s)

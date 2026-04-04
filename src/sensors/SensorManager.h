@@ -77,4 +77,9 @@ private:
     bool     _magOk         = false;
     uint32_t _lastSlowMs    = 0;   // INA / BMP / GPS push timer (1 Hz)
     uint32_t _lastImuPushMs = 0;   // IMU / MAG push timer (20 Hz)
+
+    // Complementary filter state
+    uint32_t _lastImuMs     = 0;   // millis() at last IMU read — for dt
+    float    _imuDtS        = 0.0f; // last dt in seconds — shared with _readMag
+    float    _gzDps         = 0.0f; // gyro yaw rate (°/s) — shared with _readMag
 };

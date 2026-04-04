@@ -78,6 +78,11 @@ class AppState:
         self.sensor_imu:   dict = {}  # {"ok", "roll": °, "pitch": °}
         self.sensor_mag:   dict = {}  # {"ok", "hdg": °}
 
+        # Stabilization modes (future: Pi-side corrective velocity loop)
+        self.stab_roll_enabled:    bool = False
+        self.stab_pitch_enabled:   bool = False
+        self.stab_heading_lock:    bool = False
+
         # Signal new frame from capture → vision thread
         self.new_frame_event: threading.Event = threading.Event()
 
