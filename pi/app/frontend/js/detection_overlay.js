@@ -1,16 +1,13 @@
 /**
  * detection_overlay.js — Canvas overlay: detection boxes + HUD instruments.
  *
- * HUD elements (drawn under detection boxes, hidden during detection mode):
- *   Compass tape  — scrolling bearing tape at top edge with azimuth tick marks
- *   Artificial horizon — center, tilts with roll, shifts with pitch
+ * HUD (on by default, hides during detection mode):
+ *   Compass tape    — bottom edge, scrolling azimuth marks
+ *   Horizon         — center, tilts with roll, shifts with pitch
+ *   Gimbal readout  — top-left, pan/tilt angles
+ *   Info strip      — above compass tape, power / GPS / env
  *
- * Public API:
- *   initOverlay(imgEl, canvasEl)
- *   updateDetections(objects)
- *   setHUDEnabled(bool)          — HUD checkbox
- *   setDetectionMode(mode)       — "none"|"face"|"yolo"; HUD hides when active
- *   updateHUDData(imu, mag)      — feed latest sensor values, triggers redraw
+ * All IMU/compass values are EMA-smoothed before drawing.
  */
 
 import { send } from "./app.js";
@@ -20,13 +17,26 @@ let _ctx    = null;
 let _img    = null;
 let _detections = [];
 
-let _hudEnabled          = false;
+let _hudEnabled          = true;    // on at boot
 let _hudLockRoll         = false;
 let _detectionModeActive = false;
-let _imuData = null;   // { ok, roll, pitch }
-let _magData = null;   // { ok, hdg }
+
+// Latest sensor inputs (set by app.js)
+let _imuData = null;
+let _magData = null;
+let _telData = {};   // { pan, tilt, power, env, gps }
+
+// EMA-smoothed display values
+let _sRoll  = null;
+let _sPitch = null;
+let _sHdg   = null;
+
+const ROLL_ALPHA  = 0.2;
+const PITCH_ALPHA = 0.2;
+const HDG_ALPHA   = 0.12;   // slower — compass tape feels stable
 
 const COLOURS = { face: "#4caf50", default: "#ff9800" };
+const TAPE_H  = 48;   // compass tape height (px at native res)
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Public API
@@ -63,9 +73,36 @@ export function setDetectionMode(mode) {
 }
 
 export function updateHUDData(imu, mag) {
-  _imuData = imu;
-  _magData = mag;
+  // Apply EMA smoothing
+  if (imu) {
+    _sRoll  = _emaVal(_sRoll,  imu.roll  ?? 0, ROLL_ALPHA);
+    _sPitch = _emaVal(_sPitch, imu.pitch ?? 0, PITCH_ALPHA);
+    _imuData = imu;
+  }
+  if (mag) {
+    _sHdg = _emaAngle(_sHdg, mag.hdg ?? 0, HDG_ALPHA);
+    _magData = mag;
+  }
   if (_hudEnabled && !_detectionModeActive) _redraw();
+}
+
+export function updateTelemetryHUD(pan, tilt, power, env, gps) {
+  _telData = { pan, tilt, power, env, gps };
+  if (_hudEnabled && !_detectionModeActive) _redraw();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EMA helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+function _emaVal(prev, next, alpha) {
+  return prev === null ? next : prev + alpha * (next - prev);
+}
+
+function _emaAngle(prev, next, alpha) {
+  if (prev === null) return next;
+  const diff = ((next - prev + 540) % 360) - 180;
+  return (prev + alpha * diff + 360) % 360;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -88,14 +125,12 @@ function _redraw() {
   const h = _canvas.height;
   _ctx.clearRect(0, 0, w, h);
 
-  // HUD drawn first so detection boxes render on top
   if (_hudEnabled && !_detectionModeActive) {
     _drawHUD(w, h);
   }
 
   const scaleX = w / (window._ptz_cam_w ?? 1280);
   const scaleY = h / (window._ptz_cam_h ?? 720);
-
   for (const d of _detections) {
     const colour = COLOURS[d.label] ?? COLOURS.default;
     const x = d.x * scaleX, y = d.y * scaleY;
@@ -126,18 +161,23 @@ function _onCanvasClick(e) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// HUD
+// HUD root
 // ─────────────────────────────────────────────────────────────────────────────
 
 function _drawHUD(w, h) {
-  const roll  = _imuData?.roll  ?? 0;
-  const pitch = _imuData?.pitch ?? 0;
-  const hdg   = ((_magData?.hdg ?? 0) + 360) % 360;
+  const roll  = _sRoll  ?? 0;
+  const pitch = _sPitch ?? 0;
+  const hdg   = _sHdg   ?? 0;
+
   _drawCompassTape(w, h, hdg);
+  _drawInfoStrip(w, h);
   _drawHorizon(w, h, roll, pitch);
+  _drawGimbalReadout(w, h);
 }
 
-// ── Compass tape (top edge, scrolling azimuth marks) ─────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Compass tape — bottom edge
+// ─────────────────────────────────────────────────────────────────────────────
 
 function _hdgLabel(deg) {
   const n = ((Math.round(deg) % 360) + 360) % 360;
@@ -147,23 +187,19 @@ function _hdgLabel(deg) {
 
 function _drawCompassTape(w, h, hdg) {
   const ctx      = _ctx;
-  const tapeH    = 48;
-  const top      = h - tapeH;   // tape sits at the bottom edge
-  const pxPerDeg = w / 90;      // 90° spans full width
+  const top      = h - TAPE_H;
+  const pxPerDeg = w / 90;
 
-  // Background strip
   ctx.fillStyle = "rgba(0,0,0,0.6)";
-  ctx.fillRect(0, top, w, tapeH);
+  ctx.fillRect(0, top, w, TAPE_H);
   ctx.strokeStyle = "rgba(255,255,255,0.1)";
   ctx.lineWidth = 1;
   ctx.beginPath(); ctx.moveTo(0, top); ctx.lineTo(w, top); ctx.stroke();
 
-  // Azimuth tick marks + labels — ticks extend downward from the top of the strip
   const start = Math.floor((hdg - 47) / 5) * 5;
   for (let d = start; d <= hdg + 47; d += 5) {
     const norm = ((d % 360) + 360) % 360;
     const x    = w / 2 + (d - hdg) * pxPerDeg;
-
     const isCard  = norm % 90 === 0;
     const isInter = norm % 45 === 0;
     const isTen   = norm % 10 === 0;
@@ -171,10 +207,7 @@ function _drawCompassTape(w, h, hdg) {
 
     ctx.strokeStyle = isCard ? "rgba(255,190,0,0.95)" : "rgba(200,200,200,0.45)";
     ctx.lineWidth   = isCard ? 2 : 1;
-    ctx.beginPath();
-    ctx.moveTo(x, top + 1);
-    ctx.lineTo(x, top + 1 + tickLen);
-    ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x, top + 1); ctx.lineTo(x, top + 1 + tickLen); ctx.stroke();
 
     if (isCard || isInter) {
       ctx.font         = isCard ? "bold 12px monospace" : "10px monospace";
@@ -185,44 +218,106 @@ function _drawCompassTape(w, h, hdg) {
     }
   }
 
-  // Center heading bug — triangle pointing up from bottom edge
+  // Center bug
   const cx = w / 2;
   ctx.fillStyle = "#29b6f6";
   ctx.beginPath();
-  ctx.moveTo(cx,     top + 1);
-  ctx.lineTo(cx - 7, top + 12);
-  ctx.lineTo(cx + 7, top + 12);
-  ctx.closePath();
-  ctx.fill();
+  ctx.moveTo(cx, top + 1); ctx.lineTo(cx - 7, top + 12); ctx.lineTo(cx + 7, top + 12);
+  ctx.closePath(); ctx.fill();
 
-  // Heading readout in a box just above the tape
+  // Heading readout
   const hdgStr = String(Math.round(hdg) % 360).padStart(3, "0") + "°";
   ctx.font = "bold 13px monospace";
   const tw = ctx.measureText(hdgStr).width + 12;
-  ctx.fillStyle    = "rgba(0,0,0,0.8)";
+  ctx.fillStyle = "rgba(0,0,0,0.8)";
   ctx.fillRect(cx - tw / 2, top - 18, tw, 17);
-  ctx.fillStyle    = "#29b6f6";
-  ctx.textAlign    = "center";
-  ctx.textBaseline = "top";
+  ctx.fillStyle = "#29b6f6";
+  ctx.textAlign = "center"; ctx.textBaseline = "top";
   ctx.fillText(hdgStr, cx, top - 17);
 }
 
-// ── Artificial horizon ────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Info strip — power / GPS / env, just above compass tape
+// ─────────────────────────────────────────────────────────────────────────────
+
+function _drawInfoStrip(w, h) {
+  const { power, env, gps } = _telData;
+  const parts = [];
+
+  if (power?.ok) {
+    parts.push(`${power.vin.toFixed(1)}V  ${power.curr.toFixed(0)}mA`);
+  }
+  if (gps?.fix) {
+    parts.push(
+      `GPS ${gps.lat.toFixed(5)}  ${gps.lon.toFixed(5)}  ${gps.sats}\u25C6  ${gps.spd_mph.toFixed(1)}mph`
+    );
+  } else if (gps) {
+    parts.push("GPS NO FIX");
+  }
+  if (env) {
+    parts.push(`${env.temp_f.toFixed(0)}\u00B0F  ${env.alt_ft.toFixed(0)}ft  ${env.press_inhg.toFixed(2)}inHg`);
+  }
+
+  if (!parts.length) return;
+
+  const text = parts.join("   \u2502   ");
+  const ctx  = _ctx;
+  const y    = h - TAPE_H - 8;
+
+  ctx.font = "11px monospace";
+  ctx.textAlign    = "center";
+  ctx.textBaseline = "bottom";
+  const tw = ctx.measureText(text).width + 16;
+  ctx.fillStyle = "rgba(0,0,0,0.55)";
+  ctx.fillRect(w / 2 - tw / 2, y - 14, tw, 16);
+  ctx.fillStyle = "rgba(220,220,220,0.85)";
+  ctx.fillText(text, w / 2, y);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Gimbal readout — top-left
+// ─────────────────────────────────────────────────────────────────────────────
+
+function _drawGimbalReadout(w, h) {
+  const { pan, tilt } = _telData;
+  if (pan === undefined || tilt === undefined) return;
+
+  const ctx  = _ctx;
+  const panStr  = `PAN  ${pan  >= 0 ? "+" : ""}${pan.toFixed(1)}\u00B0`;
+  const tiltStr = `TILT ${tilt >= 0 ? "+" : ""}${tilt.toFixed(1)}\u00B0`;
+
+  ctx.font = "bold 13px monospace";
+  const lw = Math.max(ctx.measureText(panStr).width, ctx.measureText(tiltStr).width) + 14;
+  const lh = 36;
+
+  ctx.fillStyle = "rgba(0,0,0,0.55)";
+  ctx.fillRect(8, 8, lw, lh);
+
+  ctx.fillStyle    = "#29b6f6";
+  ctx.textAlign    = "left";
+  ctx.textBaseline = "top";
+  ctx.fillText(panStr,  14, 11);
+  ctx.fillText(tiltStr, 14, 26);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Artificial horizon
+// ─────────────────────────────────────────────────────────────────────────────
 
 function _drawHorizon(w, h, roll, pitch) {
   const ctx         = _ctx;
   const cx          = w / 2;
   const cy          = h / 2;
-  const pxPerDeg    = h / 90;         // 45° pitch fills half the frame height
+  const pxPerDeg    = h / 90;
   const effectiveRoll = _hudLockRoll ? 0 : roll;
   const rollRad     = effectiveRoll * Math.PI / 180;
-  const pitchOffset = pitch * pxPerDeg;  // nose up → line moves down; nose down → line moves up
+  const pitchOffset = pitch * pxPerDeg;
 
   ctx.save();
   ctx.translate(cx, cy);
   ctx.rotate(rollRad);
 
-  // Pitch ladder marks
+  // Pitch ladder
   for (let p = -40; p <= 40; p += 5) {
     if (p === 0) continue;
     const py    = pitchOffset + p * pxPerDeg;
@@ -230,33 +325,24 @@ function _drawHorizon(w, h, roll, pitch) {
     const len   = major ? 60 : 30;
     ctx.strokeStyle = "rgba(255,255,255,0.35)";
     ctx.lineWidth   = major ? 1.5 : 1;
-    ctx.beginPath();
-    ctx.moveTo(-len, py);
-    ctx.lineTo( len, py);
-    ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-len, py); ctx.lineTo(len, py); ctx.stroke();
     if (major) {
       const lbl = String(Math.abs(p));
-      ctx.font         = "10px monospace";
-      ctx.fillStyle    = "rgba(255,255,255,0.5)";
-      ctx.textAlign    = "left";
-      ctx.textBaseline = "middle";
-      ctx.fillText(lbl,  len + 5, py);
-      ctx.textAlign    = "right";
-      ctx.fillText(lbl, -len - 5, py);
+      ctx.font = "10px monospace"; ctx.fillStyle = "rgba(255,255,255,0.5)";
+      ctx.textAlign = "left";  ctx.textBaseline = "middle"; ctx.fillText(lbl,  len + 5, py);
+      ctx.textAlign = "right"; ctx.fillText(lbl, -len - 5, py);
     }
   }
 
-  // Horizon line — amber, split at center
+  // Horizon line — amber, split
   const lineLen = w * 0.28;
   const gap     = 52;
-  ctx.strokeStyle = "rgba(255,190,0,0.9)";
-  ctx.lineWidth   = 2;
+  ctx.strokeStyle = "rgba(255,190,0,0.9)"; ctx.lineWidth = 2;
   ctx.beginPath(); ctx.moveTo(-lineLen, pitchOffset); ctx.lineTo(-gap, pitchOffset); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo( gap, pitchOffset);     ctx.lineTo( lineLen, pitchOffset); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(gap, pitchOffset);      ctx.lineTo(lineLen, pitchOffset); ctx.stroke();
 
-  // Aircraft reference symbol — fixed at center (doesn't move with pitch)
-  ctx.strokeStyle = "#29b6f6";
-  ctx.lineWidth   = 2.5;
+  // Aircraft symbol
+  ctx.strokeStyle = "#29b6f6"; ctx.lineWidth = 2.5;
   ctx.beginPath(); ctx.moveTo(-42, 0); ctx.lineTo(-18, 0); ctx.lineTo(-12, 7); ctx.stroke();
   ctx.beginPath(); ctx.moveTo( 42, 0); ctx.lineTo( 18, 0); ctx.lineTo( 12, 7); ctx.stroke();
   ctx.beginPath(); ctx.arc(0, 0, 3, 0, Math.PI * 2); ctx.fillStyle = "#29b6f6"; ctx.fill();

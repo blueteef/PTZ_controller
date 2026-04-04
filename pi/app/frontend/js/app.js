@@ -12,6 +12,7 @@ import { stopSending } from "./controls.js";
 import {
   initOverlay, updateDetections,
   setHUDEnabled, setHUDLockRoll, setDetectionMode, updateHUDData,
+  updateTelemetryHUD,
 } from "./detection_overlay.js";
 
 // ---------------------------------------------------------------------------
@@ -63,12 +64,9 @@ function handleMessage(msg) {
       setSerialStatus(msg.serial_ok);
       setTrackingStatus(msg.tracking_active);
       setPosition(msg.pan, msg.tilt);
-      if (msg.power) updateSensorPower(msg.power);
-      if (msg.env)   updateSensorEnv(msg.env);
-      if (msg.gps)   updateSensorGPS(msg.gps);
-      if (msg.imu)   updateSensorIMU(msg.imu);
-      if (msg.mag)   updateSensorMag(msg.mag);
+      if (msg.mag?.ok) _lastMagHdg = msg.mag.hdg;
       updateHUDData(msg.imu ?? null, msg.mag ?? null);
+      updateTelemetryHUD(msg.pan, msg.tilt, msg.power ?? null, msg.env ?? null, msg.gps ?? null);
       syncStabCheckboxes(msg);
       break;
     case "detections":
@@ -102,63 +100,22 @@ function setTrackingStatus(active) {
   stopBtn.disabled = !active;
 }
 
+// Last known compass heading, kept in sync by updateHUDData via telemetry
+let _lastMagHdg = null;
+
 function setPosition(pan, tilt) {
   document.getElementById("pos-display").textContent =
     `pan ${pan.toFixed(1)}°  tilt ${tilt.toFixed(1)}°`;
-  document.getElementById("d-pan").textContent  = `${pan.toFixed(1)}°`;
-  document.getElementById("d-tilt").textContent = `${tilt.toFixed(1)}°`;
-}
-
-function updateSensorPower(p) {
-  const vinEl = document.getElementById("d-vin");
-  vinEl.textContent = p.ok ? `${p.vin.toFixed(2)} V` : "ERR";
-  vinEl.className   = "dash-val " + (p.ok ? "" : "bad");
-  document.getElementById("d-curr").textContent = p.ok ? `${p.curr.toFixed(0)} mA`          : "—";
-  document.getElementById("d-pwr").textContent  = p.ok ? `${(p.pwr / 1000).toFixed(2)} W`   : "—";
-}
-
-function updateSensorEnv(e) {
-  document.getElementById("d-temp").textContent  = `${e.temp_f.toFixed(1)} °F`;
-  document.getElementById("d-press").textContent = `${e.press_inhg.toFixed(2)} inHg`;
-  document.getElementById("d-alt").textContent   = `${e.alt_ft.toFixed(0)} ft`;
-}
-
-function updateSensorIMU(m) {
-  const base = "dash-val";
-  const rollEl  = document.getElementById("d-roll");
-  const pitchEl = document.getElementById("d-pitch");
-  if (m.ok) {
-    rollEl.textContent  = `${m.roll.toFixed(1)}°`;
-    pitchEl.textContent = `${m.pitch.toFixed(1)}°`;
-    rollEl.className = pitchEl.className = base;
-  } else {
-    rollEl.textContent  = "ERR";
-    pitchEl.textContent = "ERR";
-    rollEl.className = pitchEl.className = base + " bad";
-  }
-}
-
-function updateSensorMag(m) {
-  const el = document.getElementById("d-mag-hdg");
-  if (m.ok) {
-    el.textContent = `${m.hdg.toFixed(0)}°`;
-    el.className = "dash-val";
-  } else {
-    el.textContent = "ERR";
-    el.className = "dash-val bad";
-  }
 }
 
 function wireCompassCal() {
-  const input  = document.getElementById("compass-cal-input");
-  const btn    = document.getElementById("btn-compass-cal");
-  const hdgEl  = document.getElementById("d-mag-hdg");
+  const input = document.getElementById("compass-cal-input");
+  const btn   = document.getElementById("btn-compass-cal");
 
-  // Pre-fill with current reading when user clicks into the box
+  // Pre-fill with last known heading when user focuses the box
   input.onfocus = () => {
-    if (!input.value) {
-      const cur = parseFloat(hdgEl.textContent);
-      if (!isNaN(cur)) input.value = cur.toFixed(1);
+    if (!input.value && _lastMagHdg !== null) {
+      input.value = _lastMagHdg.toFixed(1);
     }
   };
 
@@ -170,24 +127,6 @@ function wireCompassCal() {
     btn.textContent = "✓";
     setTimeout(() => { btn.textContent = "Set"; }, 1500);
   };
-
-  // Also handle compass_calibrated confirmation from server
-  window._compassCalHandler = (msg) => {
-    if (msg.type === "compass_calibrated") {
-      log.debug?.("Compass offset updated to", msg.offset);
-    }
-  };
-}
-
-function updateSensorGPS(g) {
-  const fixEl = document.getElementById("d-gps-fix");
-  fixEl.textContent = g.fix ? "YES" : "NO";
-  fixEl.className   = "dash-val " + (g.fix ? "ok" : "bad");
-  document.getElementById("d-gps-sats").textContent = g.sats;
-  document.getElementById("d-gps-lat").textContent  = g.fix ? g.lat.toFixed(6) : "—";
-  document.getElementById("d-gps-lon").textContent  = g.fix ? g.lon.toFixed(6) : "—";
-  document.getElementById("d-gps-hdg").textContent  = `${g.hdg.toFixed(0)}°`;
-  document.getElementById("d-gps-spd").textContent  = `${g.spd_mph.toFixed(1)} mph`;
 }
 
 // ---------------------------------------------------------------------------
@@ -316,21 +255,6 @@ function wireAccelSlider() {
 }
 
 // ---------------------------------------------------------------------------
-// Axis invert checkboxes
-// ---------------------------------------------------------------------------
-
-function wireInvertToggles() {
-  const panCb  = document.getElementById("pan-invert");
-  const tiltCb = document.getElementById("tilt-invert");
-
-  panCb.checked  = window._ptz_pan_invert  ?? false;
-  tiltCb.checked = window._ptz_tilt_invert ?? false;
-
-  panCb.onchange  = () => send({ type: "update_settings", pan_invert:  panCb.checked });
-  tiltCb.onchange = () => send({ type: "update_settings", tilt_invert: tiltCb.checked });
-}
-
-// ---------------------------------------------------------------------------
 // Face recognition
 // ---------------------------------------------------------------------------
 
@@ -444,6 +368,11 @@ window.addEventListener("DOMContentLoaded", async () => {
     console.warn("Could not fetch server config", e);
   }
 
+  // Sidebar starts collapsed — sync the toggle button label
+  const _sidebarToggle = document.getElementById("btn-sidebar-toggle");
+  _sidebarToggle.textContent = "\u25B6";   // ▶
+  _sidebarToggle.title = "Show sidebar";
+
   connect();
   wireButtons();
   wireDetectionMode();
@@ -451,7 +380,6 @@ window.addEventListener("DOMContentLoaded", async () => {
   wireSidebarToggle();
   wireSpeedSlider();
   wireAccelSlider();
-  wireInvertToggles();
   wireStabilization();
   wireCompassCal();
   wireFaceRecognition();
