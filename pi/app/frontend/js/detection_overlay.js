@@ -21,6 +21,7 @@ let _img    = null;
 let _detections = [];
 
 let _hudEnabled          = false;
+let _hudLockRoll         = false;
 let _detectionModeActive = false;
 let _imuData = null;   // { ok, roll, pitch }
 let _magData = null;   // { ok, hdg }
@@ -48,6 +49,11 @@ export function updateDetections(objects) {
 
 export function setHUDEnabled(enabled) {
   _hudEnabled = enabled;
+  _redraw();
+}
+
+export function setHUDLockRoll(locked) {
+  _hudLockRoll = locked;
   _redraw();
 }
 
@@ -207,9 +213,10 @@ function _drawHorizon(w, h, roll, pitch) {
   const ctx         = _ctx;
   const cx          = w / 2;
   const cy          = h / 2;
-  const pxPerDeg    = h / 90;          // 45° pitch fills half the frame height
-  const rollRad     = roll * Math.PI / 180;
-  const pitchOffset = -pitch * pxPerDeg;  // nose up → line moves up
+  const pxPerDeg    = h / 90;         // 45° pitch fills half the frame height
+  const effectiveRoll = _hudLockRoll ? 0 : roll;
+  const rollRad     = effectiveRoll * Math.PI / 180;
+  const pitchOffset = pitch * pxPerDeg;  // nose up → line moves down; nose down → line moves up
 
   ctx.save();
   ctx.translate(cx, cy);

@@ -11,7 +11,7 @@
 import { stopSending } from "./controls.js";
 import {
   initOverlay, updateDetections,
-  setHUDEnabled, setDetectionMode, updateHUDData,
+  setHUDEnabled, setHUDLockRoll, setDetectionMode, updateHUDData,
 } from "./detection_overlay.js";
 
 // ---------------------------------------------------------------------------
@@ -162,8 +162,10 @@ function updateSensorGPS(g) {
 // ---------------------------------------------------------------------------
 
 function wireHUD() {
-  const cb = document.getElementById("hud-toggle");
-  cb.onchange = () => setHUDEnabled(cb.checked);
+  const cb     = document.getElementById("hud-toggle");
+  const cbLock = document.getElementById("hud-lock-roll");
+  cb.onchange     = () => setHUDEnabled(cb.checked);
+  cbLock.onchange = () => setHUDLockRoll(cbLock.checked);
 }
 
 // ---------------------------------------------------------------------------
