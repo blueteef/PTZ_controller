@@ -4,14 +4,18 @@
 
 #include "SensorManager.h"
 #include <Wire.h>
+#include <SoftwareSerial.h>
 #include <INA226_WE.h>
 #include <Adafruit_BMP280.h>
 #include <TinyGPSPlus.h>
 #include "config.h"
 
 static INA226_WE       _ina(INA226_I2C_ADDR);
-static Adafruit_BMP280 _bmp;   // uses default Wire; begin() specifies addr
+static Adafruit_BMP280 _bmp;
 static TinyGPSPlus     _gps;
+// GPS on SoftwareSerial — frees HardwareSerial 1 (Serial1) for TMC2209 UART.
+// 9600 baud is well within SoftwareSerial's reliable range on ESP32.
+static SoftwareSerial  _gpsSerial;
 
 // -----------------------------------------------------------------------------
 // Public
@@ -47,9 +51,9 @@ bool SensorManager::begin() {
     }
     _data.bmpOk = _bmpOk;
 
-    // GPS on Serial1 (HardwareSerial 1 — freed because TMCDriver now uses SoftwareSerial)
-    Serial1.begin(GPS_BAUD_RATE, SERIAL_8N1, GPS_RX_PIN, GPS_TX_PIN);
-    Serial.printf("[SENS] GPS UART started — GPIO%d RX, GPIO%d TX, %d baud\r\n",
+    // GPS on SoftwareSerial — HardwareSerial 1 (Serial1) is reserved for TMC2209 UART
+    _gpsSerial.begin(GPS_BAUD_RATE, SWSERIAL_8N1, GPS_RX_PIN, GPS_TX_PIN);
+    Serial.printf("[SENS] GPS SoftwareSerial started — GPIO%d RX, GPIO%d TX, %d baud\r\n",
                   GPS_RX_PIN, GPS_TX_PIN, GPS_BAUD_RATE);
 
     return true;  // always true — sensor failures are non-fatal and logged above
@@ -75,8 +79,8 @@ void SensorManager::_readBMP() {
 }
 
 void SensorManager::_feedGPS() {
-    while (Serial1.available()) {
-        _gps.encode(Serial1.read());
+    while (_gpsSerial.available()) {
+        _gps.encode(_gpsSerial.read());
     }
     _data.gpsFix  = _gps.location.isValid();
     _data.gpsSats = _gps.satellites.isValid() ? (uint8_t)_gps.satellites.value() : 0;
