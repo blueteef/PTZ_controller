@@ -120,11 +120,8 @@
 #define I2C1_SDA_PIN         18
 #define I2C1_SCL_PIN         5
 
-// MPU-6050 IMU
-// NOTE: if your I2C scanner reports 8-bit addresses, divide by 2 for the 7-bit
-// address the library uses (e.g. 0x98 >> 1 = 0x4C). Standard MPU-6050 is
-// 0x68 (AD0=GND) or 0x69 (AD0=VCC).
-#define MPU6050_I2C_ADDR     0x4C
+// MPU-6050 IMU (AD0=GND → 0x68)
+#define MPU6050_I2C_ADDR     0x68
 
 // QMC5883L compass (fixed address 0x0D)
 #define QMC5883L_I2C_ADDR    0x0D
