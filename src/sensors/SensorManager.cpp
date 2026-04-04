@@ -61,9 +61,10 @@ bool SensorManager::begin() {
 
 void SensorManager::_readINA() {
     if (!_inaOk) return;
+    _ina.readAndClearFlags();   // required before reading — clears conversion-ready flag
     _data.busVoltageV = _ina.getBusVoltage_V();
     _data.currentMA   = _ina.getCurrent_mA();
-    _data.powerMW     = _data.busVoltageV * _data.currentMA;  // V * mA = mW
+    _data.powerMW     = _ina.getBusPower() * 1000.0f;  // getBusPower() returns W → mW
 }
 
 void SensorManager::_readBMP() {
