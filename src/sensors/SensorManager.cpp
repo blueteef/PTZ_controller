@@ -88,10 +88,9 @@ void SensorManager::_feedGPS() {
 }
 
 void SensorManager::_pushTelemetry() {
-    if (_data.inaOk) {
-        Serial2.printf("$PWR vin=%.3f,curr=%.1f,pwr=%.1f\r\n",
-                       _data.busVoltageV, _data.currentMA, _data.powerMW);
-    }
+    Serial2.printf("$PWR ok=%d,vin=%.3f,curr=%.1f,pwr=%.1f\r\n",
+                   _data.inaOk ? 1 : 0,
+                   _data.busVoltageV, _data.currentMA, _data.powerMW);
     if (_data.bmpOk) {
         Serial2.printf("$ENV temp=%.2f,press=%.2f,alt=%.1f\r\n",
                        _data.tempC, _data.pressHPa, _data.altM);

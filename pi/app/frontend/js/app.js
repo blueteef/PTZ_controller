@@ -100,15 +100,17 @@ function setPosition(pan, tilt) {
 }
 
 function updateSensorPower(p) {
-  document.getElementById("d-vin").textContent  = `${p.vin.toFixed(2)} V`;
-  document.getElementById("d-curr").textContent = `${p.curr.toFixed(0)} mA`;
-  document.getElementById("d-pwr").textContent  = `${(p.pwr / 1000).toFixed(2)} W`;
+  const vinEl = document.getElementById("d-vin");
+  vinEl.textContent = p.ok ? `${p.vin.toFixed(2)} V` : "ERR";
+  vinEl.className   = "dash-val " + (p.ok ? "" : "bad");
+  document.getElementById("d-curr").textContent = p.ok ? `${p.curr.toFixed(0)} mA`          : "—";
+  document.getElementById("d-pwr").textContent  = p.ok ? `${(p.pwr / 1000).toFixed(2)} W`   : "—";
 }
 
 function updateSensorEnv(e) {
-  document.getElementById("d-temp").textContent  = `${e.temp.toFixed(1)} °C`;
-  document.getElementById("d-press").textContent = `${e.press.toFixed(1)} hPa`;
-  document.getElementById("d-alt").textContent   = `${e.alt.toFixed(0)} m`;
+  document.getElementById("d-temp").textContent  = `${e.temp_f.toFixed(1)} °F`;
+  document.getElementById("d-press").textContent = `${e.press_inhg.toFixed(2)} inHg`;
+  document.getElementById("d-alt").textContent   = `${e.alt_ft.toFixed(0)} ft`;
 }
 
 function updateSensorGPS(g) {
@@ -119,7 +121,7 @@ function updateSensorGPS(g) {
   document.getElementById("d-gps-lat").textContent  = g.fix ? g.lat.toFixed(6) : "—";
   document.getElementById("d-gps-lon").textContent  = g.fix ? g.lon.toFixed(6) : "—";
   document.getElementById("d-gps-hdg").textContent  = `${g.hdg.toFixed(0)}°`;
-  document.getElementById("d-gps-spd").textContent  = `${g.spd.toFixed(1)} kts`;
+  document.getElementById("d-gps-spd").textContent  = `${g.spd_mph.toFixed(1)} mph`;
 }
 
 // ---------------------------------------------------------------------------

@@ -198,26 +198,30 @@ class ESPBridge:
             if line.startswith("$PWR "):
                 kv = _parse_kv(line[5:])
                 state.sensor_power = {
+                    "ok":   int(kv.get("ok",   0)),
                     "vin":  float(kv.get("vin",  0)),
                     "curr": float(kv.get("curr", 0)),
                     "pwr":  float(kv.get("pwr",  0)),
                 }
             elif line.startswith("$ENV "):
                 kv = _parse_kv(line[5:])
+                temp_c  = float(kv.get("temp",  0))
+                alt_m   = float(kv.get("alt",   0))
                 state.sensor_env = {
-                    "temp":  float(kv.get("temp",  0)),
-                    "press": float(kv.get("press", 0)),
-                    "alt":   float(kv.get("alt",   0)),
+                    "temp_f": temp_c * 9 / 5 + 32,          # °C → °F
+                    "press":  float(kv.get("press", 0)),     # hPa (inHg = hPa*0.02953)
+                    "press_inhg": float(kv.get("press", 0)) * 0.02953,
+                    "alt_ft": alt_m * 3.28084,               # m → ft
                 }
             elif line.startswith("$GPS "):
                 kv = _parse_kv(line[5:])
                 state.sensor_gps = {
-                    "lat":  float(kv.get("lat",  0)),
-                    "lon":  float(kv.get("lon",  0)),
-                    "fix":  int(kv.get("fix",    0)),
-                    "sats": int(kv.get("sats",   0)),
-                    "hdg":  float(kv.get("hdg",  0)),
-                    "spd":  float(kv.get("spd",  0)),
+                    "lat":     float(kv.get("lat",  0)),
+                    "lon":     float(kv.get("lon",  0)),
+                    "fix":     int(kv.get("fix",    0)),
+                    "sats":    int(kv.get("sats",   0)),
+                    "hdg":     float(kv.get("hdg",  0)),
+                    "spd_mph": float(kv.get("spd",  0)) * 1.15078,  # knots → mph
                 }
         except (ValueError, KeyError) as e:
             log.debug("sensor parse error on %r: %s", line, e)
