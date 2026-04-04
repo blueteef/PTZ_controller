@@ -236,98 +236,91 @@ def main() -> None:
     roll0, pitch0, hdg0 = _sample(20)
     print(f"\n  Baseline →  roll={roll0:+.1f}°  pitch={pitch0:+.1f}°  heading={hdg0:.1f}°")
 
-    # Possible axis swap hint
     if abs(roll0) > 20 or abs(pitch0) > 20:
         print()
-        print("  ⚠  One axis is far from 0° when level — likely an axis swap.")
-        print("     We'll check that in Step 3.")
+        print("  ⚠  One axis is far from 0° when level — possible axis swap.")
+        print("     Step 2 will sort it out.")
 
     # ════════════════════════════════════════════════════════════════════════
-    # Step 2 — Roll axis check
+    # Step 2 — Tilt motor test  (detects axis swap + pitch sign in one go)
     # ════════════════════════════════════════════════════════════════════════
-    _section("Roll axis direction", 2, 5)
-    print("  The gimbal has no roll motor, so you'll do this by hand.")
-    print("  Pick up or tip the entire rig so the LEFT side goes DOWN,")
-    print("  then bring it back level.  Press ENTER when done.\n")
+    _section("Tilt motor test — axis swap + pitch direction", 2, 4)
+    print("  The TILT motor is the only axis we can move reliably, so we use it")
+    print("  for everything: which IMU axis is pitch, is it swapped with roll,")
+    print("  and which direction is positive.")
+    print()
+    print("  Use the TILT motor to tilt the camera FORWARD (nose/lens pointing DOWN).")
+    print("  Go as far as you can, hold it there, and press ENTER.\n")
     _watch_until_enter()
 
-    print()
-    print("  Convention: left side down should read NEGATIVE roll.")
-    ans = _ask(
-        "  When the left side was down, did roll go POSITIVE or NEGATIVE?  [pos / neg / skip]: ",
-        ["pos", "negative", "neg", "positive", "skip"],
-    )
-    if ans in ("pos", "positive"):
-        results["IMU_ROLL_SIGN"] = -1
-        print("  → Roll is backwards.  Will set IMU_ROLL_SIGN=-1")
-    elif ans in ("neg", "negative"):
-        results["IMU_ROLL_SIGN"] = 1
-        print("  → Roll direction is correct.  IMU_ROLL_SIGN=1")
-    else:
-        print("  → Skipped.  Keeping IMU_ROLL_SIGN=1")
+    roll_fwd, pitch_fwd, _ = _sample(15)
+    roll_delta  = roll_fwd  - roll0
+    pitch_delta = pitch_fwd - pitch0
+    print(f"\n  Change from baseline →  roll: {roll_delta:+.1f}°   pitch: {pitch_delta:+.1f}°")
 
-    # ════════════════════════════════════════════════════════════════════════
-    # Step 3 — Pitch axis check
-    # ════════════════════════════════════════════════════════════════════════
-    _section("Pitch axis direction", 3, 5)
-    print("  Use the TILT motor to tilt the camera FORWARD (lens pointing down),")
-    print("  then back to level.  Press ENTER when done.\n")
-    _watch_until_enter()
-
-    print()
-    print("  Convention: nose/lens pointing down should read NEGATIVE pitch.")
-    ans = _ask(
-        "  When tilted forward (nose down), did pitch go POSITIVE or NEGATIVE?  [pos / neg / skip]: ",
-        ["pos", "negative", "neg", "positive", "skip"],
-    )
-    if ans in ("pos", "positive"):
-        results["IMU_PITCH_SIGN"] = -1
-        print("  → Pitch is backwards.  Will set IMU_PITCH_SIGN=-1")
-    elif ans in ("neg", "negative"):
-        results["IMU_PITCH_SIGN"] = 1
-        print("  → Pitch direction is correct.  IMU_PITCH_SIGN=1")
-    else:
-        print("  → Skipped.  Keeping IMU_PITCH_SIGN=1")
-
-    # ════════════════════════════════════════════════════════════════════════
-    # Step 4 — Axis swap check
-    # ════════════════════════════════════════════════════════════════════════
-    _section("Axis swap check", 4, 5)
-    print("  Place the camera FLAT AND LEVEL again.  Press ENTER when settled.\n")
-    _watch_until_enter()
-
-    roll_now, pitch_now, _ = _sample(10)
-    print(f"\n  Level reading: roll={roll_now:+.1f}°  pitch={pitch_now:+.1f}°")
-    print()
-
-    # If both axes are near zero, no swap needed.  If one is large, likely swapped.
-    if abs(roll_now) > 20 and abs(pitch_now) < 10:
-        print("  ⚠  Roll is large but pitch is near zero at a level position.")
-        print("     This suggests roll and pitch may be swapped.")
-    elif abs(pitch_now) > 20 and abs(roll_now) < 10:
-        print("  ⚠  Pitch is large but roll is near zero at a level position.")
-        print("     This suggests roll and pitch may be swapped.")
-    else:
-        print("  Both axes look reasonable at level position.")
-
-    print()
-    ans = _ask(
-        "  When you ran the TILT motor, did ROLL change (instead of pitch)?  [y / n / skip]: ",
-        ["y", "n", "yes", "no", "skip"],
-    )
-    if ans in ("y", "yes"):
-        results["IMU_SWAP_ROLL_PITCH"] = True
-        print("  → Axes are swapped.  Will set IMU_SWAP_ROLL_PITCH=true")
-    elif ans in ("n", "no"):
+    # Determine which axis moved — that tells us swap status
+    if abs(pitch_delta) >= abs(roll_delta):
         results["IMU_SWAP_ROLL_PITCH"] = False
-        print("  → Axes are correct.  IMU_SWAP_ROLL_PITCH=false")
+        print("  Pitch changed more than roll → axes are correct, no swap needed.")
+        print("  IMU_SWAP_ROLL_PITCH=false")
+        # Pitch sign: nose down should be negative
+        if pitch_delta > 0:
+            results["IMU_PITCH_SIGN"] = -1
+            print("  Pitch went POSITIVE nose-down → will flip.  IMU_PITCH_SIGN=-1")
+        else:
+            results["IMU_PITCH_SIGN"] = 1
+            print("  Pitch went NEGATIVE nose-down → correct direction.  IMU_PITCH_SIGN=1")
     else:
-        print("  → Skipped.  Keeping IMU_SWAP_ROLL_PITCH=false")
+        results["IMU_SWAP_ROLL_PITCH"] = True
+        print("  Roll changed more than pitch → axes are SWAPPED.")
+        print("  IMU_SWAP_ROLL_PITCH=true")
+        # After swap, roll_delta is actually the pitch reading — apply sign fix to it
+        if roll_delta > 0:
+            results["IMU_PITCH_SIGN"] = -1
+            print("  (swapped) Roll went POSITIVE nose-down → will flip.  IMU_PITCH_SIGN=-1")
+        else:
+            results["IMU_PITCH_SIGN"] = 1
+            print("  (swapped) Roll went NEGATIVE nose-down → correct direction.  IMU_PITCH_SIGN=1")
+
+    # ════════════════════════════════════════════════════════════════════════
+    # Step 3 — Roll sign
+    # ════════════════════════════════════════════════════════════════════════
+    _section("Roll sign", 3, 4)
+    print("  Roll is side-to-side tilt.  The gimbal has no roll motor, so there's")
+    print("  no reliable way to test it with just pan/tilt axes.")
+    print()
+    print("  Options:")
+    print("    a) Skip — default IMU_ROLL_SIGN=1 is usually correct.")
+    print("    b) Physically tip the entire rig sideways RIGHT now by lifting")
+    print("       one side of the base/tripod, then press ENTER to record it.")
+    print()
+    ans = _ask("  Tip the rig sideways now, or skip?  [tip / skip]: ", ["tip", "skip"])
+
+    if ans == "tip":
+        print()
+        print("  Slowly tip the rig so the LEFT SIDE goes DOWN, hold, press ENTER.\n")
+        _watch_until_enter()
+        roll_tip, _, _ = _sample(15)
+        roll_tip_delta = roll_tip - roll0
+        print(f"\n  Roll delta from baseline: {roll_tip_delta:+.1f}°")
+        if abs(roll_tip_delta) < 5:
+            print("  ⚠  Roll barely changed — the rig may not have tipped enough,")
+            print("     or this axis doesn't respond to that tilt. Keeping IMU_ROLL_SIGN=1.")
+        elif roll_tip_delta > 0:
+            # Left side down → positive reading → backwards from convention
+            results["IMU_ROLL_SIGN"] = -1
+            print("  Left side down → positive roll → will flip.  IMU_ROLL_SIGN=-1")
+        else:
+            results["IMU_ROLL_SIGN"] = 1
+            print("  Left side down → negative roll → correct direction.  IMU_ROLL_SIGN=1")
+    else:
+        print("  Skipped — keeping IMU_ROLL_SIGN=1.")
+        print("  If the dashboard roll reads backwards, add IMU_ROLL_SIGN=-1 to .env.")
 
     # ════════════════════════════════════════════════════════════════════════
     # Step 5 — Compass heading
     # ════════════════════════════════════════════════════════════════════════
-    _section("Compass heading and direction", 5, 5)
+    _section("Compass heading and direction", 4, 4)
     print("  This step figures out the compass offset and whether it's inverted.")
     print()
 
