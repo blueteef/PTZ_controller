@@ -4,10 +4,12 @@
 
 #include "TMCDriver.h"
 #include <TMCStepper.h>
+#include <SoftwareSerial.h>
 #include "config.h"
 
-// Serial1 remapped to TMC_UART_RX_PIN / TMC_UART_TX_PIN (half-duplex, shared bus).
-static HardwareSerial _tmcSerial(1);
+// SoftwareSerial on TMC_UART pins — frees HardwareSerial 1 (Serial1) for GPS.
+// Half-duplex: GPIO4 (TX through 1kΩ) and GPIO17 (RX direct) Y-wired to PDN_UART.
+static SoftwareSerial _tmcSerial;
 
 // One TMC2209Stepper object per axis — each addressed via MS1/MS2 hardware pins.
 static TMC2209Stepper _pan (&_tmcSerial, TMC_R_SENSE, TMC_PAN_ADDR);
@@ -45,7 +47,7 @@ static bool _configAxis(TMC2209Stepper& drv, uint16_t mA, const char* name) {
 
 bool TMCDriver::begin() {
     // 115200 is the TMC2209 default UART baud.
-    _tmcSerial.begin(115200, SERIAL_8N1, TMC_UART_RX_PIN, TMC_UART_TX_PIN);
+    _tmcSerial.begin(115200, SWSERIAL_8N1, TMC_UART_RX_PIN, TMC_UART_TX_PIN);
     delay(50);  // let drivers finish power-on reset before first UART access
 
     bool ok = true;

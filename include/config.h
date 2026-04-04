@@ -87,3 +87,36 @@
 
 // Jog mode: stop axis if no directional key arrives within this window.
 #define JOG_KEY_TIMEOUT_MS    150
+
+// -----------------------------------------------------------------------------
+// Sensors — stationary side
+// -----------------------------------------------------------------------------
+
+// I2C bus 0 (INA226 + BMP280 on stationary chassis)
+#define I2C0_SDA_PIN         22
+#define I2C0_SCL_PIN         23
+
+// INA226 power monitor (R100 shunt = 0.1 Ω, addr set by A0/A1 = GND/GND)
+#define INA226_I2C_ADDR      0x40
+#define INA226_SHUNT_OHM     0.1f
+#define INA226_MAX_A         8.0f
+
+// BMP280 barometric / temperature (SDO=GND → I2C addr 0x76)
+#define BMP280_I2C_ADDR      0x76
+
+// GPS UART on Serial1 (HardwareSerial 1)
+//   Pi GPIO16 (RX) ← ESP32 GPIO13 (TX)  [GPS TX → ESP32]
+//   Pi GPIO13 (TX) → ESP32 GPIO16 (RX)  [GPS RX ← ESP32]
+// Note: TX pin here just reserves the GPIO; GPS modules rarely need commands.
+#define GPS_RX_PIN           16
+#define GPS_TX_PIN           13
+#define GPS_BAUD_RATE        9600
+
+// Sensor push interval — how often ESP32 emits $PWR/$ENV/$GPS on Serial2
+#define SENSOR_PUSH_MS       1000
+
+// -----------------------------------------------------------------------------
+// FreeRTOS sensor task
+// -----------------------------------------------------------------------------
+#define TASK_SENSOR_PRIORITY   1
+#define TASK_SENSOR_STACK      4096

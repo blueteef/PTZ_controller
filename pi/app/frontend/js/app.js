@@ -60,6 +60,9 @@ function handleMessage(msg) {
       setSerialStatus(msg.serial_ok);
       setTrackingStatus(msg.tracking_active);
       setPosition(msg.pan, msg.tilt);
+      if (msg.power) updateSensorPower(msg.power);
+      if (msg.env)   updateSensorEnv(msg.env);
+      if (msg.gps)   updateSensorGPS(msg.gps);
       break;
     case "detections":
       updateDetections(msg.objects);
@@ -92,6 +95,25 @@ function setTrackingStatus(active) {
 function setPosition(pan, tilt) {
   document.getElementById("pos-display").textContent =
     `pan ${pan.toFixed(1)}°  tilt ${tilt.toFixed(1)}°`;
+}
+
+function updateSensorPower(p) {
+  document.getElementById("sensor-power").textContent =
+    `Power: ${p.vin.toFixed(2)} V  ${p.curr.toFixed(0)} mA  ${(p.pwr / 1000).toFixed(2)} W`;
+}
+
+function updateSensorEnv(e) {
+  document.getElementById("sensor-env").textContent =
+    `Env: ${e.temp.toFixed(1)} °C  ${e.press.toFixed(1)} hPa  ${e.alt.toFixed(0)} m`;
+}
+
+function updateSensorGPS(g) {
+  const fix = g.fix ? `fix ${g.sats} sats` : "no fix";
+  const pos = g.fix
+    ? `${g.lat.toFixed(5)}, ${g.lon.toFixed(5)}`
+    : "—";
+  document.getElementById("sensor-gps").textContent =
+    `GPS: ${fix}  ${pos}  hdg ${g.hdg.toFixed(0)}°`;
 }
 
 // ---------------------------------------------------------------------------

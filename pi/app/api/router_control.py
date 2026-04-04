@@ -78,6 +78,9 @@ async def _telemetry_loop(ws: WebSocket) -> None:
                 state.gimbal_tilt_deg,
                 state.serial_connected,
                 state.tracking_enabled,
+                sensor_power=state.sensor_power or None,
+                sensor_env=state.sensor_env or None,
+                sensor_gps=state.sensor_gps or None,
             )
             await ws.send_json(msg)
 

@@ -40,6 +40,16 @@ _PRIO_NORMAL   = 1   # velocity, settings
 _QUEUE_MAXSIZE = 16
 
 
+def _parse_kv(s: str) -> dict:
+    """'a=1,b=2.3' → {'a': '1', 'b': '2.3'}"""
+    result = {}
+    for pair in s.split(","):
+        if "=" in pair:
+            k, v = pair.split("=", 1)
+            result[k.strip()] = v.strip()
+    return result
+
+
 class ESPBridge:
     def __init__(self) -> None:
         self._port: Optional[serial.Serial] = None
@@ -161,21 +171,61 @@ class ESPBridge:
         if not self._is_connected():
             return
         try:
+            # Drain any asynchronous sensor lines pushed by ESP32 before sending query
+            while self._port.in_waiting:
+                raw = self._port.readline().decode(errors="replace").strip()
+                if raw.startswith("$"):
+                    self._parse_sensor_line(raw)
+
             self._port.write(protocol.cmd_get_position().encode())
             self._port.flush()
-            # Read up to 2 response lines; stop as soon as readline times out.
+            # Read response lines; handle any $ lines that arrive mid-response
             buf = []
-            for _ in range(2):
+            for _ in range(4):
                 line = self._port.readline().decode(errors="replace")
                 if not line:
                     break
-                buf.append(line)
+                stripped = line.strip()
+                if stripped.startswith("$"):
+                    self._parse_sensor_line(stripped)
+                else:
+                    buf.append(line)
             result = protocol.parse_position("".join(buf))
             if result:
                 state.set_gimbal_position(result[0], result[1])
         except serial.SerialException as e:
             log.warning("poll failed: %s", e)
             self._mark_disconnected()
+
+    def _parse_sensor_line(self, line: str) -> None:
+        """Parse $PWR/$ENV/$GPS telemetry lines pushed asynchronously by ESP32."""
+        try:
+            if line.startswith("$PWR "):
+                kv = _parse_kv(line[5:])
+                state.sensor_power = {
+                    "vin":  float(kv.get("vin",  0)),
+                    "curr": float(kv.get("curr", 0)),
+                    "pwr":  float(kv.get("pwr",  0)),
+                }
+            elif line.startswith("$ENV "):
+                kv = _parse_kv(line[5:])
+                state.sensor_env = {
+                    "temp":  float(kv.get("temp",  0)),
+                    "press": float(kv.get("press", 0)),
+                    "alt":   float(kv.get("alt",   0)),
+                }
+            elif line.startswith("$GPS "):
+                kv = _parse_kv(line[5:])
+                state.sensor_gps = {
+                    "lat":  float(kv.get("lat",  0)),
+                    "lon":  float(kv.get("lon",  0)),
+                    "fix":  int(kv.get("fix",    0)),
+                    "sats": int(kv.get("sats",   0)),
+                    "hdg":  float(kv.get("hdg",  0)),
+                    "spd":  float(kv.get("spd",  0)),
+                }
+        except (ValueError, KeyError) as e:
+            log.debug("sensor parse error on %r: %s", line, e)
 
     # ------------------------------------------------------------------
     # Internal: connection management

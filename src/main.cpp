@@ -27,10 +27,12 @@
 #include "cli/CLI.h"
 #include "peripherals/StatusLED.h"
 #include "peripherals/TMCDriver.h"
+#include "sensors/SensorManager.h"
 
 static MotionController gMotion;
 static StatusLED        gLED;
 static CLI*             gCLI = nullptr;
+static SensorManager    gSensors;
 
 void setup() {
     Serial.begin(CLI_BAUD_RATE);
@@ -66,6 +68,9 @@ void setup() {
     gCLI->begin(CLI_BAUD_RATE);
     Serial.println("[BOOT] CLI OK");
 
+    gSensors.begin();
+    Serial.println("[BOOT] SensorManager OK");
+
     xTaskCreatePinnedToCore(
         MotionController::motionTask, "motion",
         TASK_MOTION_STACK, &gMotion,
@@ -75,6 +80,11 @@ void setup() {
         CLI::cliTask, "cli",
         TASK_CLI_STACK, gCLI,
         TASK_CLI_PRIORITY, nullptr, 1);
+
+    xTaskCreatePinnedToCore(
+        SensorManager::sensorTask, "sensors",
+        TASK_SENSOR_STACK, &gSensors,
+        TASK_SENSOR_PRIORITY, nullptr, 0);  // core 0 — away from motion/CLI on core 1
 
     gLED.setPattern(LEDPattern::SLOW_BLINK);
     Serial.printf("[BOOT] %s v%s ready\r\n",

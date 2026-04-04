@@ -61,14 +61,24 @@ class MotionSettingsRequest(BaseModel):
 
 
 def make_telemetry(pan: float, tilt: float,
-                   serial_ok: bool, tracking: bool) -> dict:
-    return {
+                   serial_ok: bool, tracking: bool,
+                   sensor_power: dict = None,
+                   sensor_env:   dict = None,
+                   sensor_gps:   dict = None) -> dict:
+    msg: dict = {
         "type": "telemetry",
         "pan": round(pan, 2),
         "tilt": round(tilt, 2),
         "serial_ok": serial_ok,
         "tracking_active": tracking,
     }
+    if sensor_power:
+        msg["power"] = sensor_power
+    if sensor_env:
+        msg["env"] = sensor_env
+    if sensor_gps:
+        msg["gps"] = sensor_gps
+    return msg
 
 
 def make_detections(detections: list) -> dict:
