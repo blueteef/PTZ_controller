@@ -15,6 +15,7 @@
         <span id="serial-badge" class="badge bad">ESP32 ✗</span>
         <span id="tracking-badge" class="badge off">Tracking OFF</span>
         <span id="pos-display">pan —°  tilt —°</span>
+        <button id="btn-sidebar-toggle" class="btn-icon" title="Toggle sidebar">&#9664;</button>
       </span>
     </header>
 
@@ -170,6 +171,15 @@
         <section>
           <h3>Acceleration <span id="accel-val">—</span> °/s²</h3>
           <input id="accel-slider" type="range" min="30" max="720" step="10" value="120">
+        </section>
+
+        <!-- Overlay HUD -->
+        <section>
+          <h3>Feed Overlay</h3>
+          <label class="toggle-row">
+            <input type="checkbox" id="hud-toggle"> Compass / Horizon HUD
+          </label>
+          <p class="hint">Hides automatically during face/object detection.</p>
         </section>
 
         <!-- Axis invert -->

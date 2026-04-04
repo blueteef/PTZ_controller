@@ -145,6 +145,12 @@ IMU_PITCH_SIGN = float(os.getenv("IMU_PITCH_SIGN", "1"))
 # Swap roll and pitch if sensor is mounted 90° rotated around Z
 IMU_SWAP_ROLL_PITCH = _env_bool("IMU_SWAP_ROLL_PITCH", "false")
 
+# Zero-point offset (degrees) — applied after sign/swap correction.
+# Use to remove a constant bias when the camera is level.
+# e.g. if pitch reads +90° when level: IMU_PITCH_OFFSET_DEG=-90
+IMU_ROLL_OFFSET_DEG  = float(os.getenv("IMU_ROLL_OFFSET_DEG",  "0.0"))
+IMU_PITCH_OFFSET_DEG = float(os.getenv("IMU_PITCH_OFFSET_DEG", "0.0"))
+
 # Compass offset (degrees) — corrects for magnetic declination or physical mount offset.
 # Add your local declination (positive = east) or physical rotation here.
 MAG_HDG_OFFSET_DEG = float(os.getenv("MAG_HDG_OFFSET_DEG", "0.0"))

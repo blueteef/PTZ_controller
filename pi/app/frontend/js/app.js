@@ -9,7 +9,10 @@
  */
 
 import { stopSending } from "./controls.js";
-import { initOverlay, updateDetections } from "./detection_overlay.js";
+import {
+  initOverlay, updateDetections,
+  setHUDEnabled, setDetectionMode, updateHUDData,
+} from "./detection_overlay.js";
 
 // ---------------------------------------------------------------------------
 // WebSocket
@@ -65,6 +68,7 @@ function handleMessage(msg) {
       if (msg.gps)   updateSensorGPS(msg.gps);
       if (msg.imu)   updateSensorIMU(msg.imu);
       if (msg.mag)   updateSensorMag(msg.mag);
+      updateHUDData(msg.imu ?? null, msg.mag ?? null);
       syncStabCheckboxes(msg);
       break;
     case "detections":
@@ -154,6 +158,29 @@ function updateSensorGPS(g) {
 }
 
 // ---------------------------------------------------------------------------
+// HUD toggle
+// ---------------------------------------------------------------------------
+
+function wireHUD() {
+  const cb = document.getElementById("hud-toggle");
+  cb.onchange = () => setHUDEnabled(cb.checked);
+}
+
+// ---------------------------------------------------------------------------
+// Sidebar toggle
+// ---------------------------------------------------------------------------
+
+function wireSidebarToggle() {
+  const btn     = document.getElementById("btn-sidebar-toggle");
+  const sidebar = document.getElementById("sidebar");
+  btn.onclick = () => {
+    const collapsed = sidebar.classList.toggle("collapsed");
+    btn.textContent = collapsed ? "\u25B6" : "\u25C4";   // ▶ / ◀
+    btn.title = collapsed ? "Show sidebar" : "Hide sidebar";
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Stabilization checkboxes
 // ---------------------------------------------------------------------------
 
@@ -209,6 +236,7 @@ function wireDetectionMode() {
   const sel = document.getElementById("det-mode");
   sel.onchange = () => {
     send({ type: "set_detection", mode: sel.value });
+    setDetectionMode(sel.value);
   };
 }
 
@@ -384,6 +412,8 @@ window.addEventListener("DOMContentLoaded", async () => {
   connect();
   wireButtons();
   wireDetectionMode();
+  wireHUD();
+  wireSidebarToggle();
   wireSpeedSlider();
   wireAccelSlider();
   wireInvertToggles();

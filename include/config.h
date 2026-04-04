@@ -128,8 +128,8 @@
 
 // Complementary filter weight for IMU fusion (roll/pitch/yaw).
 // High-pass on gyro, low-pass on accel/compass.
-// 0.98 ≈ gyro time constant ~2.5 s at 20 Hz.
-#define IMU_COMP_ALPHA       0.98f
+// 0.95 ≈ gyro time constant ~1 s at 20 Hz — converges faster than 0.98.
+#define IMU_COMP_ALPHA       0.95f
 
 // -----------------------------------------------------------------------------
 // FreeRTOS sensor task
