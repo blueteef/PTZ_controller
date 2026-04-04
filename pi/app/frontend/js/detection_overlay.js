@@ -305,41 +305,49 @@ function _drawGimbalReadout(w, h) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function _drawHorizon(w, h, roll, pitch) {
-  const ctx         = _ctx;
-  const cx          = w / 2;
-  const cy          = h / 2;
-  const pxPerDeg    = h / 90;
-  const effectiveRoll = _hudLockRoll ? 0 : roll;
-  const rollRad     = effectiveRoll * Math.PI / 180;
-  const pitchOffset = pitch * pxPerDeg;
+  const ctx      = _ctx;
+  const cx       = w / 2;
+  const cy       = h / 2;
+  const pxPerDeg = h / 90;
+  const rollRad  = (_hudLockRoll ? 0 : roll) * Math.PI / 180;
+  const cosR     = Math.cos(rollRad);
+  const sinR     = Math.sin(rollRad);
 
-  ctx.save();
-  ctx.translate(cx, cy);
-  ctx.rotate(rollRad);
+  // Rotate a canvas-relative offset [dx,dy] by roll around (cx,cy)
+  function pt(dx, dy) {
+    return [cx + dx * cosR - dy * sinR,
+            cy + dx * sinR + dy * cosR];
+  }
+
+  const pitchOff = pitch * pxPerDeg;   // y-offset (down = nose-up horizon)
 
   // Pitch ladder
   for (let p = -40; p <= 40; p += 5) {
     if (p === 0) continue;
-    const py    = pitchOffset + p * pxPerDeg;
+    const py    = pitchOff + p * pxPerDeg;
     const major = p % 10 === 0;
     const len   = major ? 120 : 60;
+    const [x1, y1] = pt(-len, py);
+    const [x2, y2] = pt( len, py);
     ctx.strokeStyle = major ? "rgba(255,255,255,0.80)" : "rgba(255,255,255,0.50)";
     ctx.lineWidth   = major ? 3 : 2;
-    ctx.beginPath(); ctx.moveTo(-len, py); ctx.lineTo(len, py); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
     if (major) {
       const lbl = String(Math.abs(p));
+      const [lx, ly] = pt(len + 8, py);
+      const [rx, ry] = pt(-(len + 8), py);
       ctx.font = "20px monospace"; ctx.fillStyle = "rgba(255,255,255,0.85)";
-      ctx.textAlign = "left";  ctx.textBaseline = "middle"; ctx.fillText(lbl,  len + 8, py);
-      ctx.textAlign = "right"; ctx.fillText(lbl, -len - 8, py);
+      ctx.textAlign = "left";  ctx.textBaseline = "middle"; ctx.fillText(lbl, lx, ly);
+      ctx.textAlign = "right"; ctx.fillText(lbl, rx, ry);
     }
   }
 
   // Horizon line — amber, split
   const lineLen = w * 0.28;
   const gap     = 80;
-  ctx.strokeStyle = "rgba(255,190,0,0.9)"; ctx.lineWidth = 4;
-  ctx.beginPath(); ctx.moveTo(-lineLen, pitchOffset); ctx.lineTo(-gap, pitchOffset); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(gap, pitchOffset);      ctx.lineTo(lineLen, pitchOffset); ctx.stroke();
-
-  ctx.restore();
+  ctx.strokeStyle = "rgba(255,190,0,0.95)"; ctx.lineWidth = 4;
+  const [ax1,ay1] = pt(-lineLen, pitchOff); const [ax2,ay2] = pt(-gap, pitchOff);
+  const [bx1,by1] = pt( gap,     pitchOff); const [bx2,by2] = pt( lineLen, pitchOff);
+  ctx.beginPath(); ctx.moveTo(ax1,ay1); ctx.lineTo(ax2,ay2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(bx1,by1); ctx.lineTo(bx2,by2); ctx.stroke();
 }
