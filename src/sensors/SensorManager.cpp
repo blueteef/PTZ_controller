@@ -8,13 +8,19 @@
 #include <INA226_WE.h>
 #include <Adafruit_BMP280.h>
 #include <TinyGPSPlus.h>
+#include <MPU6050.h>
+#include <math.h>
 #include "config.h"
 
+// I2C0 — stationary side
 static INA226_WE       _ina(INA226_I2C_ADDR);
 static Adafruit_BMP280 _bmp;
+
+// I2C1 — moving side (through slip ring)
+static MPU6050         _mpu(MPU6050_I2C_ADDR, &Wire1);
+
+// GPS on SoftwareSerial — HardwareSerial 1 reserved for TMC2209 UART
 static TinyGPSPlus     _gps;
-// GPS on SoftwareSerial — frees HardwareSerial 1 (Serial1) for TMC2209 UART.
-// 9600 baud is well within SoftwareSerial's reliable range on ESP32.
 static SoftwareSerial  _gpsSerial;
 
 // -----------------------------------------------------------------------------
@@ -56,7 +62,37 @@ bool SensorManager::begin() {
     Serial.printf("[SENS] GPS SoftwareSerial started — GPIO%d RX, GPIO%d TX, %d baud\r\n",
                   GPS_RX_PIN, GPS_TX_PIN, GPS_BAUD_RATE);
 
-    return true;  // always true — sensor failures are non-fatal and logged above
+    // I2C bus 1 — moving side (MPU-6050 IMU + QMC5883L compass through slip ring)
+    Wire1.begin(I2C1_SDA_PIN, I2C1_SCL_PIN);
+
+    // MPU-6050
+    _mpu.initialize();
+    _imuOk = _mpu.testConnection();
+    if (_imuOk) {
+        _mpu.setFullScaleAccelRange(MPU6050_ACCEL_FS_2);  // ±2g — 16384 LSB/g
+        Serial.printf("[SENS] MPU-6050 OK (0x%02X)\r\n", MPU6050_I2C_ADDR);
+    } else {
+        Serial.println("[SENS] MPU-6050 not found (check I2C1 wiring)");
+    }
+    _data.imuOk = _imuOk;
+
+    // QMC5883L — direct Wire1 register access (no library; fixed I2C address 0x0D)
+    Wire1.beginTransmission(QMC5883L_I2C_ADDR);
+    Wire1.write(0x0B);  // SET/RESET period register — must be 0x01 per datasheet
+    Wire1.write(0x01);
+    _magOk = (Wire1.endTransmission() == 0);
+    if (_magOk) {
+        Wire1.beginTransmission(QMC5883L_I2C_ADDR);
+        Wire1.write(0x09);  // Control Register 1
+        Wire1.write(0x1D);  // Continuous mode | 200 Hz | 8G range | 512 OSR
+        Wire1.endTransmission();
+        Serial.printf("[SENS] QMC5883L OK (0x%02X)\r\n", QMC5883L_I2C_ADDR);
+    } else {
+        Serial.println("[SENS] QMC5883L not found (check I2C1 wiring)");
+    }
+    _data.magOk = _magOk;
+
+    return true;
 }
 
 // -----------------------------------------------------------------------------
@@ -92,7 +128,42 @@ void SensorManager::_feedGPS() {
     _data.gpsSpdKnots = _gps.speed.isValid()  ? (float)_gps.speed.knots() : 0.0f;
 }
 
-void SensorManager::_pushTelemetry() {
+void SensorManager::_readIMU() {
+    if (!_imuOk) return;
+    int16_t ax, ay, az, gx, gy, gz;
+    _mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+    // ±2g range → 16384 LSB/g
+    float axg = ax / 16384.0f;
+    float ayg = ay / 16384.0f;
+    float azg = az / 16384.0f;
+    _data.rollDeg  = atan2f(ayg, azg)                        * 180.0f / (float)M_PI;
+    _data.pitchDeg = atan2f(-axg, sqrtf(ayg*ayg + azg*azg)) * 180.0f / (float)M_PI;
+}
+
+void SensorManager::_readMag() {
+    if (!_magOk) return;
+    Wire1.beginTransmission(QMC5883L_I2C_ADDR);
+    Wire1.write(0x00);  // data registers start at 0x00
+    if (Wire1.endTransmission(false) != 0) return;
+    Wire1.requestFrom((uint8_t)QMC5883L_I2C_ADDR, (uint8_t)6);
+    if (Wire1.available() < 6) return;
+    int16_t mx = (int16_t)(Wire1.read() | (Wire1.read() << 8));
+    int16_t my = (int16_t)(Wire1.read() | (Wire1.read() << 8));
+    int16_t mz = (int16_t)(Wire1.read() | (Wire1.read() << 8));
+
+    // Tilt-compensate using IMU roll/pitch for accurate heading when camera is angled
+    float rollR  = _data.rollDeg  * (float)M_PI / 180.0f;
+    float pitchR = _data.pitchDeg * (float)M_PI / 180.0f;
+    float mxc =  mx * cosf(pitchR) + mz * sinf(pitchR);
+    float myc =  mx * sinf(rollR) * sinf(pitchR)
+               + my * cosf(rollR)
+               - mz * sinf(rollR) * cosf(pitchR);
+    float hdg = atan2f(-myc, mxc) * 180.0f / (float)M_PI;
+    if (hdg < 0.0f) hdg += 360.0f;
+    _data.magHdgDeg = hdg;
+}
+
+void SensorManager::_pushSlow() {
     Serial2.printf("$PWR ok=%d,vin=%.3f,curr=%.1f,pwr=%.1f\r\n",
                    _data.inaOk ? 1 : 0,
                    _data.busVoltageV, _data.currentMA, _data.powerMW);
@@ -100,13 +171,21 @@ void SensorManager::_pushTelemetry() {
         Serial2.printf("$ENV temp=%.2f,press=%.2f,alt=%.1f\r\n",
                        _data.tempC, _data.pressHPa, _data.altM);
     }
-    // GPS pushed unconditionally — Pi uses fix=0 to ignore position fields
     Serial2.printf("$GPS lat=%.6f,lon=%.6f,fix=%d,sats=%d,hdg=%.1f,spd=%.2f\r\n",
                    _data.gpsLat, _data.gpsLon,
                    _data.gpsFix ? 1 : 0,
                    _data.gpsSats,
                    _data.gpsHdgDeg,
                    _data.gpsSpdKnots);
+}
+
+void SensorManager::_pushFast() {
+    Serial2.printf("$IMU ok=%d,roll=%.2f,pitch=%.2f\r\n",
+                   _data.imuOk ? 1 : 0,
+                   _data.rollDeg, _data.pitchDeg);
+    Serial2.printf("$MAG ok=%d,hdg=%.1f\r\n",
+                   _data.magOk ? 1 : 0,
+                   _data.magHdgDeg);
 }
 
 // -----------------------------------------------------------------------------
@@ -117,18 +196,27 @@ void SensorManager::sensorTask(void* param) {
     SensorManager* sm = static_cast<SensorManager*>(param);
 
     for (;;) {
-        // Feed GPS at task rate (~20 Hz) for responsive fix acquisition
-        sm->_feedGPS();
-
-        // Read slow sensors and push telemetry at 1 Hz
         uint32_t now = millis();
-        if (now - sm->_lastReadMs >= SENSOR_PUSH_MS) {
-            sm->_lastReadMs = now;
-            sm->_readINA();
-            sm->_readBMP();
-            sm->_pushTelemetry();
+
+        // IMU + compass: read and push at 20 Hz
+        if (now - sm->_lastImuPushMs >= SENSOR_IMU_PUSH_MS) {
+            sm->_lastImuPushMs = now;
+            sm->_readIMU();
+            sm->_readMag();
+            sm->_pushFast();
         }
 
-        vTaskDelay(pdMS_TO_TICKS(50));
+        // GPS feed: run every task tick for fast fix acquisition
+        sm->_feedGPS();
+
+        // Slow sensors: INA226 / BMP280 / GPS telemetry at 1 Hz
+        if (now - sm->_lastSlowMs >= SENSOR_PUSH_MS) {
+            sm->_lastSlowMs = now;
+            sm->_readINA();
+            sm->_readBMP();
+            sm->_pushSlow();
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(10));  // 100 Hz task rate, handles 20 Hz IMU timing
     }
 }

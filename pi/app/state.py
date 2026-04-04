@@ -71,10 +71,12 @@ class AppState:
         # Serial bridge health
         self.serial_connected: bool = False
 
-        # Sensor telemetry pushed by ESP32 ($PWR / $ENV / $GPS lines)
+        # Sensor telemetry pushed by ESP32 ($PWR / $ENV / $GPS / $IMU / $MAG lines)
         self.sensor_power: dict = {}  # {"vin": V, "curr": mA, "pwr": mW}
         self.sensor_env:   dict = {}  # {"temp": °C, "press": hPa, "alt": m}
         self.sensor_gps:   dict = {}  # {"lat", "lon", "fix", "sats", "hdg", "spd"}
+        self.sensor_imu:   dict = {}  # {"ok", "roll": °, "pitch": °}
+        self.sensor_mag:   dict = {}  # {"ok", "hdg": °}
 
         # Signal new frame from capture → vision thread
         self.new_frame_event: threading.Event = threading.Event()

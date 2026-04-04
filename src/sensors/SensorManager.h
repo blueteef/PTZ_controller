@@ -1,22 +1,23 @@
 #pragma once
 
 // =============================================================================
-// SensorManager — Stationary-side sensor suite.
+// SensorManager — Stationary and moving-side sensor suite.
 //
-// Sensors:
-//   INA226  — 12 V bus voltage, current, power (I2C0 0x40, shunt R100 = 0.1Ω)
-//   BMP280  — temperature, pressure, altitude   (I2C0 0x76, SDO=GND)
-//   GPS     — lat/lon/heading/speed/fix/sats    (Serial1, 9600 baud)
+// Stationary (I2C0, GPIO22/23):
+//   INA226  — 12 V bus voltage, current, power (0x40, R100 shunt)
+//   BMP280  — temperature, pressure, altitude   (0x76, SDO=GND)
+//   GPS     — lat/lon/heading/speed/fix/sats    (SoftwareSerial GPIO16/13)
 //
-// Operation:
-//   sensorTask() runs at ~20 Hz, feeds GPS bytes continuously, reads INA/BMP
-//   at ~1 Hz, and pushes $-prefixed telemetry lines on Serial2 every
-//   SENSOR_PUSH_MS milliseconds.
+// Moving / gimbal head (I2C1, GPIO18/5, through slip ring):
+//   MPU-6050 — roll, pitch from accelerometer   (0x68, AD0=GND)
+//   QMC5883L — tilt-compensated compass heading (0x0D)
 //
-// Pi parses the pushed lines:
-//   $PWR vin=12.45,curr=823.0,pwr=10234.0
+// Push protocol (Serial2 → Pi, 1 Hz):
+//   $PWR ok=1,vin=12.45,curr=823.0,pwr=10234.0
 //   $ENV temp=23.4,press=1013.2,alt=45.3
 //   $GPS lat=47.123456,lon=-122.567890,fix=1,sats=8,hdg=180.5,spd=0.00
+//   $IMU ok=1,roll=1.2,pitch=-0.5
+//   $MAG ok=1,hdg=180.5
 // =============================================================================
 
 #include <Arduino.h>
@@ -41,6 +42,15 @@ struct SensorData {
     double  gpsLon      = 0.0;
     float   gpsHdgDeg   = 0.0f;
     float   gpsSpdKnots = 0.0f;
+
+    // MPU-6050 IMU (moving side)
+    float rollDeg  = 0.0f;
+    float pitchDeg = 0.0f;
+    bool  imuOk    = false;
+
+    // QMC5883L compass (moving side, tilt-compensated)
+    float magHdgDeg = 0.0f;
+    bool  magOk     = false;
 };
 
 class SensorManager {
@@ -55,11 +65,16 @@ private:
     void _readINA();
     void _readBMP();
     void _feedGPS();
-    void _pushTelemetry();
+    void _readIMU();
+    void _readMag();
+    void _pushSlow();   // INA / BMP / GPS  — 1 Hz
+    void _pushFast();   // IMU / MAG        — 20 Hz
 
     SensorData _data;
-    bool     _inaOk      = false;
-    bool     _bmpOk      = false;
-    uint32_t _lastPushMs = 0;
-    uint32_t _lastReadMs = 0;
+    bool     _inaOk         = false;
+    bool     _bmpOk         = false;
+    bool     _imuOk         = false;
+    bool     _magOk         = false;
+    uint32_t _lastSlowMs    = 0;   // INA / BMP / GPS push timer (1 Hz)
+    uint32_t _lastImuPushMs = 0;   // IMU / MAG push timer (20 Hz)
 };

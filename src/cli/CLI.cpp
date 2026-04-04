@@ -618,6 +618,18 @@ void CLI::cmdSensor(int /*argc*/, char** /*argv*/) {
         print("BMP280:  [not found]\r\n");
     }
 
+    if (d.imuOk) {
+        printf("MPU6050: Roll=%.2f°  Pitch=%.2f°\r\n", d.rollDeg, d.pitchDeg);
+    } else {
+        print("MPU6050: [not found]\r\n");
+    }
+
+    if (d.magOk) {
+        printf("QMC5883L: Hdg=%.1f°\r\n", d.magHdgDeg);
+    } else {
+        print("QMC5883L: [not found]\r\n");
+    }
+
     printf("GPS:     Fix=%s  Sats=%u  Lat=%.6f  Lon=%.6f  Hdg=%.1f°  Spd=%.1f mph\r\n",
            d.gpsFix ? "YES" : "NO",
            d.gpsSats,

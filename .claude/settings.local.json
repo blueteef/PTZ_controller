@@ -32,7 +32,9 @@
       "WebFetch(domain:medium.com)",
       "WebFetch(domain:www.digikey.in)",
       "WebFetch(domain:pyimagesearch.com)",
-      "WebFetch(domain:learnopencv.com)"
+      "WebFetch(domain:learnopencv.com)",
+      "Bash(C:.piopenvScriptspio.exe run:*)",
+      "Bash(\"/c/.pio/penv/Scripts/pio.exe\" run:*)"
     ]
   }
 }

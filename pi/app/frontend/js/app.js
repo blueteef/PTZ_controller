@@ -63,6 +63,8 @@ function handleMessage(msg) {
       if (msg.power) updateSensorPower(msg.power);
       if (msg.env)   updateSensorEnv(msg.env);
       if (msg.gps)   updateSensorGPS(msg.gps);
+      if (msg.imu)   updateSensorIMU(msg.imu);
+      if (msg.mag)   updateSensorMag(msg.mag);
       break;
     case "detections":
       updateDetections(msg.objects);
@@ -111,6 +113,32 @@ function updateSensorEnv(e) {
   document.getElementById("d-temp").textContent  = `${e.temp_f.toFixed(1)} °F`;
   document.getElementById("d-press").textContent = `${e.press_inhg.toFixed(2)} inHg`;
   document.getElementById("d-alt").textContent   = `${e.alt_ft.toFixed(0)} ft`;
+}
+
+function updateSensorIMU(m) {
+  const base = "dash-val";
+  const rollEl  = document.getElementById("d-roll");
+  const pitchEl = document.getElementById("d-pitch");
+  if (m.ok) {
+    rollEl.textContent  = `${m.roll.toFixed(1)}°`;
+    pitchEl.textContent = `${m.pitch.toFixed(1)}°`;
+    rollEl.className = pitchEl.className = base;
+  } else {
+    rollEl.textContent  = "ERR";
+    pitchEl.textContent = "ERR";
+    rollEl.className = pitchEl.className = base + " bad";
+  }
+}
+
+function updateSensorMag(m) {
+  const el = document.getElementById("d-mag-hdg");
+  if (m.ok) {
+    el.textContent = `${m.hdg.toFixed(0)}°`;
+    el.className = "dash-val";
+  } else {
+    el.textContent = "ERR";
+    el.className = "dash-val bad";
+  }
 }
 
 function updateSensorGPS(g) {

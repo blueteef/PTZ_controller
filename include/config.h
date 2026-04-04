@@ -112,8 +112,19 @@
 #define GPS_TX_PIN           13
 #define GPS_BAUD_RATE        9600
 
-// Sensor push interval — how often ESP32 emits $PWR/$ENV/$GPS on Serial2
-#define SENSOR_PUSH_MS       1000
+// Sensor push intervals
+#define SENSOR_PUSH_MS       1000   // INA226 / BMP280 / GPS  (slow sensors, 1 Hz)
+#define SENSOR_IMU_PUSH_MS   50     // IMU / compass           (20 Hz)
+
+// I2C bus 1 (moving side — MPU-6050 + QMC5883L through slip ring)
+#define I2C1_SDA_PIN         18
+#define I2C1_SCL_PIN         5
+
+// MPU-6050 IMU (AD0=GND → 0x68)
+#define MPU6050_I2C_ADDR     0x68
+
+// QMC5883L compass (fixed address 0x0D)
+#define QMC5883L_I2C_ADDR    0x0D
 
 // -----------------------------------------------------------------------------
 // FreeRTOS sensor task

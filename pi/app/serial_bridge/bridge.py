@@ -223,6 +223,19 @@ class ESPBridge:
                     "hdg":     float(kv.get("hdg",  0)),
                     "spd_mph": float(kv.get("spd",  0)) * 1.15078,  # knots → mph
                 }
+            elif line.startswith("$IMU "):
+                kv = _parse_kv(line[5:])
+                state.sensor_imu = {
+                    "ok":    int(kv.get("ok",    0)),
+                    "roll":  float(kv.get("roll",  0)),
+                    "pitch": float(kv.get("pitch", 0)),
+                }
+            elif line.startswith("$MAG "):
+                kv = _parse_kv(line[5:])
+                state.sensor_mag = {
+                    "ok":  int(kv.get("ok",  0)),
+                    "hdg": float(kv.get("hdg", 0)),
+                }
         except (ValueError, KeyError) as e:
             log.debug("sensor parse error on %r: %s", line, e)
 

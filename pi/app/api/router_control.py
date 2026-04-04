@@ -81,6 +81,8 @@ async def _telemetry_loop(ws: WebSocket) -> None:
                 sensor_power=state.sensor_power or None,
                 sensor_env=state.sensor_env or None,
                 sensor_gps=state.sensor_gps or None,
+                sensor_imu=state.sensor_imu or None,
+                sensor_mag=state.sensor_mag or None,
             )
             await ws.send_json(msg)
 
