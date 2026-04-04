@@ -1,0 +1,16 @@
+[Unit]
+Description=PTZ Controller — Pi vision and control server
+After=network.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/PTZ_controller/pi
+ExecStart=/home/pi/PTZ_controller/pi/venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
