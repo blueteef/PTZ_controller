@@ -43,8 +43,9 @@ logging.basicConfig(
 )
 log = logging.getLogger(__name__)
 
-# Ensure Ctrl+C always works even when dlib/C++ threads are running
-signal.signal(signal.SIGINT, lambda *_: sys.exit(0))
+# Ensure Ctrl+C and systemctl stop both work cleanly
+signal.signal(signal.SIGINT,  lambda *_: sys.exit(0))
+signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))
 
 
 @asynccontextmanager
