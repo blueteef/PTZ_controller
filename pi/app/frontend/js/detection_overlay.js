@@ -142,16 +142,17 @@ function _hdgLabel(deg) {
 function _drawCompassTape(w, h, hdg) {
   const ctx      = _ctx;
   const tapeH    = 48;
-  const pxPerDeg = w / 90;   // 90° spans full width
+  const top      = h - tapeH;   // tape sits at the bottom edge
+  const pxPerDeg = w / 90;      // 90° spans full width
 
   // Background strip
   ctx.fillStyle = "rgba(0,0,0,0.6)";
-  ctx.fillRect(0, 0, w, tapeH);
+  ctx.fillRect(0, top, w, tapeH);
   ctx.strokeStyle = "rgba(255,255,255,0.1)";
   ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(0, tapeH); ctx.lineTo(w, tapeH); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0, top); ctx.lineTo(w, top); ctx.stroke();
 
-  // Azimuth tick marks + labels (the "vertical azimuth lines")
+  // Azimuth tick marks + labels — ticks extend downward from the top of the strip
   const start = Math.floor((hdg - 47) / 5) * 5;
   for (let d = start; d <= hdg + 47; d += 5) {
     const norm = ((d % 360) + 360) % 360;
@@ -165,39 +166,39 @@ function _drawCompassTape(w, h, hdg) {
     ctx.strokeStyle = isCard ? "rgba(255,190,0,0.95)" : "rgba(200,200,200,0.45)";
     ctx.lineWidth   = isCard ? 2 : 1;
     ctx.beginPath();
-    ctx.moveTo(x, tapeH - 1);
-    ctx.lineTo(x, tapeH - 1 - tickLen);
+    ctx.moveTo(x, top + 1);
+    ctx.lineTo(x, top + 1 + tickLen);
     ctx.stroke();
 
     if (isCard || isInter) {
       ctx.font         = isCard ? "bold 12px monospace" : "10px monospace";
       ctx.fillStyle    = isCard ? "rgba(255,190,0,1)" : "rgba(200,200,200,0.75)";
       ctx.textAlign    = "center";
-      ctx.textBaseline = "top";
-      ctx.fillText(_hdgLabel(norm), x, 5);
+      ctx.textBaseline = "bottom";
+      ctx.fillText(_hdgLabel(norm), x, h - 5);
     }
   }
 
-  // Center heading bug — inverted triangle at bottom of tape
+  // Center heading bug — triangle pointing up from bottom edge
   const cx = w / 2;
   ctx.fillStyle = "#29b6f6";
   ctx.beginPath();
-  ctx.moveTo(cx,     tapeH - 1);
-  ctx.lineTo(cx - 7, tapeH - 12);
-  ctx.lineTo(cx + 7, tapeH - 12);
+  ctx.moveTo(cx,     top + 1);
+  ctx.lineTo(cx - 7, top + 12);
+  ctx.lineTo(cx + 7, top + 12);
   ctx.closePath();
   ctx.fill();
 
-  // Heading readout in a box above the bug
+  // Heading readout in a box just above the tape
   const hdgStr = String(Math.round(hdg) % 360).padStart(3, "0") + "°";
   ctx.font = "bold 13px monospace";
   const tw = ctx.measureText(hdgStr).width + 12;
-  ctx.fillStyle = "rgba(0,0,0,0.8)";
-  ctx.fillRect(cx - tw / 2, tapeH - 30, tw, 17);
+  ctx.fillStyle    = "rgba(0,0,0,0.8)";
+  ctx.fillRect(cx - tw / 2, top - 18, tw, 17);
   ctx.fillStyle    = "#29b6f6";
   ctx.textAlign    = "center";
   ctx.textBaseline = "top";
-  ctx.fillText(hdgStr, cx, tapeH - 29);
+  ctx.fillText(hdgStr, cx, top - 17);
 }
 
 // ── Artificial horizon ────────────────────────────────────────────────────────
