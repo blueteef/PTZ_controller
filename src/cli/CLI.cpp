@@ -156,6 +156,7 @@ void CLI::dispatch(char* line) {
     else if (strcmp(cmd, "save")    == 0) cmdSave   (argc, argv);
     else if (strcmp(cmd, "reset")   == 0) cmdReset  (argc, argv);
     else if (strcmp(cmd, "reboot")  == 0) cmdReboot (argc, argv);
+    else if (strcmp(cmd, "sensor")  == 0) cmdSensor (argc, argv);
     else printf("Unknown command: '%s'  (type 'help')\r\n", cmd);
 }
 
@@ -589,4 +590,38 @@ void CLI::cmdReboot(int /*argc*/, char** /*argv*/) {
     print("Rebooting...\r\n");
     vTaskDelay(pdMS_TO_TICKS(100));
     esp_restart();
+}
+
+// -----------------------------------------------------------------------------
+// sensor — print latest sensor readings directly from SensorManager
+// -----------------------------------------------------------------------------
+
+void CLI::cmdSensor(int /*argc*/, char** /*argv*/) {
+    if (!_sensors) { print("SensorManager not attached\r\n"); return; }
+
+    SensorData d = _sensors->getData();
+
+    if (d.inaOk) {
+        printf("INA226:  Vin=%.3f V   Curr=%.1f mA   Pwr=%.2f W\r\n",
+               d.busVoltageV, d.currentMA, d.powerMW / 1000.0f);
+    } else {
+        print("INA226:  [not found]\r\n");
+    }
+
+    if (d.bmpOk) {
+        float tempF    = d.tempC * 9.0f / 5.0f + 32.0f;
+        float pressInHg = d.pressHPa * 0.02953f;
+        float altFt    = d.altM * 3.28084f;
+        printf("BMP280:  Temp=%.1f°F   Press=%.2f inHg   Alt=%.0f ft\r\n",
+               tempF, pressInHg, altFt);
+    } else {
+        print("BMP280:  [not found]\r\n");
+    }
+
+    printf("GPS:     Fix=%s  Sats=%u  Lat=%.6f  Lon=%.6f  Hdg=%.1f°  Spd=%.1f mph\r\n",
+           d.gpsFix ? "YES" : "NO",
+           d.gpsSats,
+           d.gpsLat, d.gpsLon,
+           d.gpsHdgDeg,
+           d.gpsSpdKnots * 1.15078f);
 }

@@ -36,6 +36,7 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
 #include "motion/MotionController.h"
+#include "sensors/SensorManager.h"
 #include "config.h"
 #include "version.h"
 
@@ -45,6 +46,8 @@ public:
 
     bool begin(uint32_t baud = CLI_BAUD_RATE);
 
+    void setSensorManager(SensorManager* s) { _sensors = s; }
+
     static void cliTask(void* param);
 
     // Thread-safe output — callable from other tasks.
@@ -53,6 +56,7 @@ public:
 
 private:
     MotionController& _motion;
+    SensorManager*    _sensors = nullptr;
     char     _buf[CLI_MAX_LINE];
     int      _len = 0;
     char     _piBuf[CLI_MAX_LINE];  // receive buffer for Pi UART (Serial2)
@@ -81,6 +85,7 @@ private:
     void cmdSave    (int argc, char** argv);
     void cmdReset   (int argc, char** argv);
     void cmdReboot  (int argc, char** argv);
+    void cmdSensor  (int argc, char** argv);
 
     bool parseAxis (const char* s, AxisId& out) const;
     bool parseFloat(const char* s, float&  out) const;

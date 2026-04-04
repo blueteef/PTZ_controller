@@ -66,6 +66,7 @@ void setup() {
 
     gCLI = new CLI(gMotion);
     gCLI->begin(CLI_BAUD_RATE);
+    gCLI->setSensorManager(&gSensors);
     Serial.println("[BOOT] CLI OK");
 
     gSensors.begin();
