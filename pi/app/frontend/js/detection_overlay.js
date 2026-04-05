@@ -319,7 +319,8 @@ function _drawHorizon(w, h, roll, pitch) {
             cy + dx * sinR + dy * cosR];
   }
 
-  const pitchOff = pitch * pxPerDeg;   // y-offset (down = nose-up horizon)
+  // Clamp so the horizon never scrolls fully off-canvas (e.g. uncalibrated +90° offset)
+  const pitchOff = Math.max(-(cy - 20), Math.min(cy - 20, pitch * pxPerDeg));
 
   // Pitch ladder
   for (let p = -40; p <= 40; p += 5) {
