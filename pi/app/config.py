@@ -158,6 +158,11 @@ MAG_HDG_OFFSET_DEG = float(os.getenv("MAG_HDG_OFFSET_DEG", "0.0"))
 # Invert compass direction (true = flip N/S, useful if sensor mounted backwards)
 MAG_HDG_INVERT = _env_bool("MAG_HDG_INVERT", "false")
 
+# Apply tilt compensation to compass using IMU roll/pitch.
+# Set false if compass is mounted on the pan axis (doesn't tilt with camera)
+# or if the IMU and compass are on different axes.
+MAG_TILT_COMPENSATE = _env_bool("MAG_TILT_COMPENSATE", "true")
+
 # ---------------------------------------------------------------------------
 # Tracking PID
 # ---------------------------------------------------------------------------

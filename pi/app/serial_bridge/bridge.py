@@ -243,11 +243,11 @@ class ESPBridge:
                 mx  = float(kv.get("mx", 0))
                 my  = float(kv.get("my", 0))
                 mz  = float(kv.get("mz", 0))
-                # Tilt-compensate using Pi-corrected roll/pitch so the IMU
-                # axis-orientation offsets are already applied before we
-                # project the field onto the horizontal plane.
+                # Tilt-compensate using Pi-corrected roll/pitch.
+                # Disable via MAG_TILT_COMPENSATE=false when the compass is
+                # mounted on the pan axis and doesn't tilt with the camera.
                 imu = state.sensor_imu
-                if imu and imu.get("ok"):
+                if config.MAG_TILT_COMPENSATE and imu and imu.get("ok"):
                     roll_r  = math.radians(imu["roll"])
                     pitch_r = math.radians(imu["pitch"])
                     mxc = mx * math.cos(pitch_r) + mz * math.sin(pitch_r)
@@ -255,7 +255,7 @@ class ESPBridge:
                            + my * math.cos(roll_r)
                            - mz * math.sin(roll_r) * math.cos(pitch_r))
                 else:
-                    mxc, myc = mx, my   # no IMU yet — flat assumption
+                    mxc, myc = mx, my   # flat assumption
                 hdg = math.degrees(math.atan2(-myc, mxc)) % 360.0
                 if config.MAG_HDG_INVERT:
                     hdg = (360.0 - hdg) % 360.0
