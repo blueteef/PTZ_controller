@@ -285,18 +285,22 @@ def main() -> None:
     ans = _ask("  Did the camera tilt NOSE DOWN or NOSE UP?  [down / up]: ", ["down", "up"])
     nose_down = (ans == "down")
 
-    # Convention: nose-down = negative pitch after correction
-    # moving_delta is the raw change on whichever axis responded
-    # If nose-down and moving_delta > 0: needs flip
-    # If nose-down and moving_delta < 0: correct
-    # Opposite for nose-up
+    # Convention: nose-down = negative pitch after all corrections.
+    # After bridge.py applies sign then swap:
+    #   no-swap: display_pitch = pitch_raw * IMU_PITCH_SIGN  → set PITCH_SIGN
+    #   swapped: display_pitch = roll_raw  * IMU_ROLL_SIGN   → set ROLL_SIGN
+    # moving_delta is the raw change on whichever axis responded.
     if nose_down:
-        results["IMU_PITCH_SIGN"] = -1 if moving_delta > 0 else 1
+        sign = -1 if moving_delta > 0 else 1
     else:
-        results["IMU_PITCH_SIGN"] =  1 if moving_delta > 0 else -1
+        sign =  1 if moving_delta > 0 else -1
 
-    sign_str = "-1 (flipped)" if results["IMU_PITCH_SIGN"] == -1 else "1 (correct)"
-    print(f"  IMU_PITCH_SIGN={results['IMU_PITCH_SIGN']}  ({sign_str})")
+    if results["IMU_SWAP_ROLL_PITCH"]:
+        results["IMU_ROLL_SIGN"]  = sign
+        print(f"  IMU_ROLL_SIGN={sign}  (controls tilt/pitch after axis swap)")
+    else:
+        results["IMU_PITCH_SIGN"] = sign
+        print(f"  IMU_PITCH_SIGN={sign}")
 
     # ════════════════════════════════════════════════════════════════════════
     # Step 3 — Level offsets (computed from baseline after sign/swap known)
