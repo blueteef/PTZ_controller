@@ -76,19 +76,19 @@ bool SensorManager::begin() {
     }
     _data.imuOk = _imuOk;
 
-    // QMC5883L — direct Wire1 register access (no library; fixed I2C address 0x0D)
-    Wire1.beginTransmission(QMC5883L_I2C_ADDR);
-    Wire1.write(0x0B);  // SET/RESET period register — must be 0x01 per datasheet
-    Wire1.write(0x01);
-    _magOk = (Wire1.endTransmission() == 0);
+    // QMC5883L — direct Wire register access (I2C0, stationary side)
+    Wire.beginTransmission(QMC5883L_I2C_ADDR);
+    Wire.write(0x0B);  // SET/RESET period register — must be 0x01 per datasheet
+    Wire.write(0x01);
+    _magOk = (Wire.endTransmission() == 0);
     if (_magOk) {
-        Wire1.beginTransmission(QMC5883L_I2C_ADDR);
-        Wire1.write(0x09);  // Control Register 1
-        Wire1.write(0x1D);  // Continuous mode | 200 Hz | 8G range | 512 OSR
-        Wire1.endTransmission();
+        Wire.beginTransmission(QMC5883L_I2C_ADDR);
+        Wire.write(0x09);  // Control Register 1
+        Wire.write(0x1D);  // Continuous mode | 200 Hz | 8G range | 512 OSR
+        Wire.endTransmission();
         Serial.printf("[SENS] QMC5883L OK (0x%02X)\r\n", QMC5883L_I2C_ADDR);
     } else {
-        Serial.println("[SENS] QMC5883L not found (check I2C1 wiring)");
+        Serial.println("[SENS] QMC5883L not found (check I2C0 wiring)");
     }
     _data.magOk = _magOk;
 
@@ -166,16 +166,16 @@ void SensorManager::_readIMU() {
 
 void SensorManager::_readMag() {
     if (!_magOk) return;
-    Wire1.beginTransmission(QMC5883L_I2C_ADDR);
-    Wire1.write(0x00);  // data registers start at 0x00
-    if (Wire1.endTransmission(false) != 0) return;
-    Wire1.requestFrom((uint8_t)QMC5883L_I2C_ADDR, (uint8_t)6);
-    if (Wire1.available() < 6) return;
+    Wire.beginTransmission(QMC5883L_I2C_ADDR);
+    Wire.write(0x00);  // data registers start at 0x00
+    if (Wire.endTransmission(false) != 0) return;
+    Wire.requestFrom((uint8_t)QMC5883L_I2C_ADDR, (uint8_t)6);
+    if (Wire.available() < 6) return;
     // Store raw counts — tilt compensation is done on the Pi using
     // corrected roll/pitch so the IMU axis orientation offsets are applied.
-    _data.magRawX = (int16_t)(Wire1.read() | (Wire1.read() << 8));
-    _data.magRawY = (int16_t)(Wire1.read() | (Wire1.read() << 8));
-    _data.magRawZ = (int16_t)(Wire1.read() | (Wire1.read() << 8));
+    _data.magRawX = (int16_t)(Wire.read() | (Wire.read() << 8));
+    _data.magRawY = (int16_t)(Wire.read() | (Wire.read() << 8));
+    _data.magRawZ = (int16_t)(Wire.read() | (Wire.read() << 8));
     _data.magOk   = true;
 }
 

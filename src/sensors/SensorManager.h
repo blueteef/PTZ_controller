@@ -4,13 +4,13 @@
 // SensorManager — Stationary and moving-side sensor suite.
 //
 // Stationary (I2C0, GPIO22/23):
-//   INA226  — 12 V bus voltage, current, power (0x40, R100 shunt)
-//   BMP280  — temperature, pressure, altitude   (0x76, SDO=GND)
-//   GPS     — lat/lon/heading/speed/fix/sats    (SoftwareSerial GPIO16/13)
+//   INA226   — 12 V bus voltage, current, power (0x40, R100 shunt)
+//   BMP280   — temperature, pressure, altitude   (0x76, SDO=GND)
+//   GPS      — lat/lon/heading/speed/fix/sats    (SoftwareSerial GPIO16/13)
+//   QMC5883L — compass raw counts (0x0D) — pan axis mount, away from motors/RF
 //
 // Moving / gimbal head (I2C1, GPIO18/5, through slip ring):
 //   MPU-6050 — roll, pitch from accelerometer   (0x68, AD0=GND)
-//   QMC5883L — tilt-compensated compass heading (0x0D)
 //
 // Push protocol (Serial2 → Pi, 1 Hz):
 //   $PWR ok=1,vin=12.45,curr=823.0,pwr=10234.0
