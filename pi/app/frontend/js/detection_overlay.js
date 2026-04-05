@@ -31,9 +31,9 @@ let _sRoll  = null;
 let _sPitch = null;
 let _sHdg   = null;
 
-const ROLL_ALPHA  = 0.2;
-const PITCH_ALPHA = 0.2;
-const HDG_ALPHA   = 0.12;   // slower — compass tape feels stable
+const ROLL_ALPHA  = 0.6;
+const PITCH_ALPHA = 0.6;
+const HDG_ALPHA   = 0.4;
 
 const COLOURS = { face: "#4caf50", default: "#ff9800" };
 const TAPE_H  = 48;   // compass tape height (px at native res)
