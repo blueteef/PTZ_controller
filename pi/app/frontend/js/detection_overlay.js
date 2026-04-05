@@ -102,7 +102,10 @@ function _emaVal(prev, next, alpha) {
 function _emaAngle(prev, next, alpha) {
   if (prev === null) return next;
   const diff = ((next - prev + 540) % 360) - 180;
-  return (prev + alpha * diff + 360) % 360;
+  // Large sudden jumps are motor EMI spikes, not real heading changes.
+  // Reduce alpha to 3% for jumps >25° so spikes barely move the display.
+  const a = Math.abs(diff) > 25 ? alpha * 0.03 : alpha;
+  return (prev + a * diff + 360) % 360;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -61,6 +61,8 @@ class ESPBridge:
         self._writer_thread = threading.Thread(
             target=self._writer_loop, daemon=True, name="esp-writer"
         )
+        self._pan_prev_deg:    float = 0.0
+        self._pan_changed_at:  float = 0.0  # monotonic time of last pan position change
 
     # ------------------------------------------------------------------
     # Lifecycle
@@ -260,6 +262,21 @@ class ESPBridge:
                 if config.MAG_HDG_INVERT:
                     hdg = (360.0 - hdg) % 360.0
                 hdg = (hdg + config.MAG_HDG_OFFSET_DEG) % 360.0
+
+                # Track pan position changes to detect real heading movement.
+                cur_pan = state.gimbal_pan_deg
+                if abs(cur_pan - self._pan_prev_deg) > 0.5:
+                    self._pan_changed_at = time.monotonic()
+                self._pan_prev_deg = cur_pan
+                pan_moving = (time.monotonic() - self._pan_changed_at) < 0.4
+
+                # Freeze heading if it jumped too far and pan isn't moving —
+                # almost certainly tilt motor EMI hitting the compass.
+                prev_hdg = (state.sensor_mag or {}).get("hdg", hdg)
+                spike = abs(((hdg - prev_hdg + 540) % 360) - 180)
+                if spike > 20 and not pan_moving:
+                    hdg = prev_hdg   # hold last good reading
+
                 state.sensor_mag = {
                     "ok":  ok,
                     "hdg": hdg,
