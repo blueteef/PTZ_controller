@@ -171,38 +171,12 @@ void SensorManager::_readMag() {
     if (Wire1.endTransmission(false) != 0) return;
     Wire1.requestFrom((uint8_t)QMC5883L_I2C_ADDR, (uint8_t)6);
     if (Wire1.available() < 6) return;
-    int16_t mx = (int16_t)(Wire1.read() | (Wire1.read() << 8));
-    int16_t my = (int16_t)(Wire1.read() | (Wire1.read() << 8));
-    int16_t mz = (int16_t)(Wire1.read() | (Wire1.read() << 8));
-
-    // Tilt-compensate using IMU roll/pitch for accurate heading when camera is angled
-    float rollR  = _data.rollDeg  * (float)M_PI / 180.0f;
-    float pitchR = _data.pitchDeg * (float)M_PI / 180.0f;
-    float mxc =  mx * cosf(pitchR) + mz * sinf(pitchR);
-    float myc =  mx * sinf(rollR) * sinf(pitchR)
-               + my * cosf(rollR)
-               - mz * sinf(rollR) * cosf(pitchR);
-    float hdg = atan2f(-myc, mxc) * 180.0f / (float)M_PI;
-    if (hdg < 0.0f) hdg += 360.0f;
-
-    if (_imuDtS > 0.0f && _imuDtS < 0.5f) {
-        // Complementary filter for yaw: gyro integrates fast transients,
-        // compass corrects long-term drift.  Handle 0/360 wrap by blending
-        // on the shortest angular path.
-        float gyroYaw = _data.magHdgDeg + _gzDps * _imuDtS;
-        if (gyroYaw <   0.0f) gyroYaw += 360.0f;
-        if (gyroYaw >= 360.0f) gyroYaw -= 360.0f;
-
-        float diff = hdg - gyroYaw;
-        if (diff >  180.0f) diff -= 360.0f;
-        if (diff < -180.0f) diff += 360.0f;
-
-        hdg = gyroYaw + (1.0f - IMU_COMP_ALPHA) * diff;
-        if (hdg <   0.0f) hdg += 360.0f;
-        if (hdg >= 360.0f) hdg -= 360.0f;
-    }
-
-    _data.magHdgDeg = hdg;
+    // Store raw counts — tilt compensation is done on the Pi using
+    // corrected roll/pitch so the IMU axis orientation offsets are applied.
+    _data.magRawX = (int16_t)(Wire1.read() | (Wire1.read() << 8));
+    _data.magRawY = (int16_t)(Wire1.read() | (Wire1.read() << 8));
+    _data.magRawZ = (int16_t)(Wire1.read() | (Wire1.read() << 8));
+    _data.magOk   = true;
 }
 
 void SensorManager::_pushSlow() {
@@ -225,9 +199,9 @@ void SensorManager::_pushFast() {
     Serial2.printf("$IMU ok=%d,roll=%.2f,pitch=%.2f\r\n",
                    _data.imuOk ? 1 : 0,
                    _data.rollDeg, _data.pitchDeg);
-    Serial2.printf("$MAG ok=%d,hdg=%.1f\r\n",
+    Serial2.printf("$MAG ok=%d,mx=%d,my=%d,mz=%d\r\n",
                    _data.magOk ? 1 : 0,
-                   _data.magHdgDeg);
+                   _data.magRawX, _data.magRawY, _data.magRawZ);
 }
 
 // -----------------------------------------------------------------------------

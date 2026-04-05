@@ -625,7 +625,7 @@ void CLI::cmdSensor(int /*argc*/, char** /*argv*/) {
     }
 
     if (d.magOk) {
-        printf("QMC5883L: Hdg=%.1f°\r\n", d.magHdgDeg);
+        printf("QMC5883L: raw mx=%d my=%d mz=%d\r\n", d.magRawX, d.magRawY, d.magRawZ);
     } else {
         print("QMC5883L: [not found]\r\n");
     }

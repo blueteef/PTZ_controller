@@ -21,6 +21,7 @@ Public API (thread-safe, call from any thread or coroutine)
 from __future__ import annotations
 
 import logging
+import math
 import queue
 import threading
 import time
@@ -237,13 +238,30 @@ class ESPBridge:
                     "pitch": pitch,
                 }
             elif line.startswith("$MAG "):
-                kv = _parse_kv(line[5:])
-                hdg = float(kv.get("hdg", 0))
+                kv  = _parse_kv(line[5:])
+                ok  = int(kv.get("ok", 0))
+                mx  = float(kv.get("mx", 0))
+                my  = float(kv.get("my", 0))
+                mz  = float(kv.get("mz", 0))
+                # Tilt-compensate using Pi-corrected roll/pitch so the IMU
+                # axis-orientation offsets are already applied before we
+                # project the field onto the horizontal plane.
+                imu = state.sensor_imu
+                if imu and imu.get("ok"):
+                    roll_r  = math.radians(imu["roll"])
+                    pitch_r = math.radians(imu["pitch"])
+                    mxc = mx * math.cos(pitch_r) + mz * math.sin(pitch_r)
+                    myc = (mx * math.sin(roll_r) * math.sin(pitch_r)
+                           + my * math.cos(roll_r)
+                           - mz * math.sin(roll_r) * math.cos(pitch_r))
+                else:
+                    mxc, myc = mx, my   # no IMU yet — flat assumption
+                hdg = math.degrees(math.atan2(-myc, mxc)) % 360.0
                 if config.MAG_HDG_INVERT:
                     hdg = (360.0 - hdg) % 360.0
                 hdg = (hdg + config.MAG_HDG_OFFSET_DEG) % 360.0
                 state.sensor_mag = {
-                    "ok":  int(kv.get("ok", 0)),
+                    "ok":  ok,
                     "hdg": hdg,
                 }
         except (ValueError, KeyError) as e:

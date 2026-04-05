@@ -17,7 +17,7 @@
 //   $ENV temp=23.4,press=1013.2,alt=45.3
 //   $GPS lat=47.123456,lon=-122.567890,fix=1,sats=8,hdg=180.5,spd=0.00
 //   $IMU ok=1,roll=1.2,pitch=-0.5
-//   $MAG ok=1,hdg=180.5
+//   $MAG ok=1,mx=1234,my=-567,mz=890
 // =============================================================================
 
 #include <Arduino.h>
@@ -48,9 +48,11 @@ struct SensorData {
     float pitchDeg = 0.0f;
     bool  imuOk    = false;
 
-    // QMC5883L compass (moving side, tilt-compensated)
-    float magHdgDeg = 0.0f;
-    bool  magOk     = false;
+    // QMC5883L compass (moving side) — raw counts; Pi does tilt compensation
+    int16_t magRawX = 0;
+    int16_t magRawY = 0;
+    int16_t magRawZ = 0;
+    bool    magOk   = false;
 };
 
 class SensorManager {
