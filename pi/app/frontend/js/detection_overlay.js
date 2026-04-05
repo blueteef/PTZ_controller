@@ -319,8 +319,8 @@ function _drawHorizon(w, h, roll, pitch) {
             cy + dx * sinR + dy * cosR];
   }
 
-  // Clamp so the horizon never scrolls fully off-canvas (e.g. uncalibrated +90° offset)
-  const pitchOff = Math.max(-(cy - 20), Math.min(cy - 20, pitch * pxPerDeg));
+  // Negate: nose-down → horizon rises. Clamp so it never leaves the canvas.
+  const pitchOff = Math.max(-(cy - 20), Math.min(cy - 20, -pitch * pxPerDeg));
 
   // Pitch ladder
   for (let p = -40; p <= 40; p += 5) {
@@ -330,14 +330,14 @@ function _drawHorizon(w, h, roll, pitch) {
     const len   = major ? 120 : 60;
     const [x1, y1] = pt(-len, py);
     const [x2, y2] = pt( len, py);
-    ctx.strokeStyle = major ? "rgba(255,255,255,0.80)" : "rgba(255,255,255,0.50)";
-    ctx.lineWidth   = major ? 3 : 2;
+    ctx.strokeStyle = major ? "rgba(255,255,255,0.45)" : "rgba(255,255,255,0.25)";
+    ctx.lineWidth   = major ? 1.5 : 1;
     ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
     if (major) {
       const lbl = String(Math.abs(p));
       const [lx, ly] = pt(len + 8, py);
       const [rx, ry] = pt(-(len + 8), py);
-      ctx.font = "20px monospace"; ctx.fillStyle = "rgba(255,255,255,0.85)";
+      ctx.font = "20px monospace"; ctx.fillStyle = "rgba(255,255,255,0.50)";
       ctx.textAlign = "left";  ctx.textBaseline = "middle"; ctx.fillText(lbl, lx, ly);
       ctx.textAlign = "right"; ctx.fillText(lbl, rx, ry);
     }
