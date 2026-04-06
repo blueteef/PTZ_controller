@@ -224,19 +224,6 @@ class ESPBridge:
                     "hdg":     float(kv.get("hdg",  0)),
                     "spd_mph": float(kv.get("spd",  0)) * 1.15078,  # knots → mph
                 }
-            elif line.startswith("$IMU "):
-                kv = _parse_kv(line[5:])
-                roll  = float(kv.get("roll",  0)) * config.IMU_ROLL_SIGN
-                pitch = float(kv.get("pitch", 0)) * config.IMU_PITCH_SIGN
-                if config.IMU_SWAP_ROLL_PITCH:
-                    roll, pitch = pitch, roll
-                roll  += config.IMU_ROLL_OFFSET_DEG
-                pitch += config.IMU_PITCH_OFFSET_DEG
-                state.sensor_imu = {
-                    "ok":    int(kv.get("ok", 0)),
-                    "roll":  roll,
-                    "pitch": pitch,
-                }
             elif line.startswith("$MAG "):
                 kv  = _parse_kv(line[5:])
                 ok  = int(kv.get("ok", 0))

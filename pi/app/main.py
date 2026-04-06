@@ -30,6 +30,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 from app.serial_bridge.bridge import bridge
+from app.imu.reader import imu_reader
 from app.camera.capture import camera
 from app.vision.pipeline import pipeline
 import app.vision.tracker as tracker_module
@@ -55,6 +56,7 @@ async def lifespan(app: FastAPI):
 
     db.init_db()
     bridge.start()
+    imu_reader.start()
     camera.start()
     pipeline.start()
 
@@ -70,6 +72,7 @@ async def lifespan(app: FastAPI):
         tracker_module.tracker.stop()
     pipeline.stop()
     camera.stop()
+    imu_reader.stop()
     bridge.stop()
     log.info("Shutdown complete")
 

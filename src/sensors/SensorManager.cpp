@@ -8,16 +8,12 @@
 #include <INA226_WE.h>
 #include <Adafruit_BMP280.h>
 #include <TinyGPSPlus.h>
-#include <MPU6050.h>
 #include <math.h>
 #include "config.h"
 
 // I2C0 — stationary side
 static INA226_WE       _ina(INA226_I2C_ADDR);
 static Adafruit_BMP280 _bmp;
-
-// I2C1 — moving side (through slip ring)
-static MPU6050         _mpu(MPU6050_I2C_ADDR, &Wire1);
 
 // GPS on SoftwareSerial — HardwareSerial 1 reserved for TMC2209 UART
 static TinyGPSPlus     _gps;
@@ -62,21 +58,8 @@ bool SensorManager::begin() {
     Serial.printf("[SENS] GPS SoftwareSerial started — GPIO%d RX, GPIO%d TX, %d baud\r\n",
                   GPS_RX_PIN, GPS_TX_PIN, GPS_BAUD_RATE);
 
-    // I2C bus 1 — moving side (MPU-6050 IMU + QMC5883L compass through slip ring)
-    Wire1.begin(I2C1_SDA_PIN, I2C1_SCL_PIN);
-
-    // MPU-6050
-    _mpu.initialize();
-    _imuOk = _mpu.testConnection();
-    if (_imuOk) {
-        _mpu.setFullScaleAccelRange(MPU6050_ACCEL_FS_2);  // ±2g — 16384 LSB/g
-        Serial.printf("[SENS] MPU-6050 OK (0x%02X)\r\n", MPU6050_I2C_ADDR);
-    } else {
-        Serial.println("[SENS] MPU-6050 not found (check I2C1 wiring)");
-    }
-    _data.imuOk = _imuOk;
-
     // QMC5883L — direct Wire register access (I2C0, stationary side)
+    // IMU (MPU-6050) is now read directly by the Pi on its own I2C bus.
     Wire.beginTransmission(QMC5883L_I2C_ADDR);
     Wire.write(0x0B);  // SET/RESET period register — must be 0x01 per datasheet
     Wire.write(0x01);
@@ -128,42 +111,6 @@ void SensorManager::_feedGPS() {
     _data.gpsSpdKnots = _gps.speed.isValid()  ? (float)_gps.speed.knots() : 0.0f;
 }
 
-void SensorManager::_readIMU() {
-    if (!_imuOk) return;
-
-    uint32_t now = millis();
-    _imuDtS = (_lastImuMs == 0) ? 0.0f : (now - _lastImuMs) / 1000.0f;
-    _lastImuMs = now;
-
-    int16_t ax, ay, az, gx, gy, gz;
-    _mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
-
-    // ±2g range → 16384 LSB/g
-    float axg = ax / 16384.0f;
-    float ayg = ay / 16384.0f;
-    float azg = az / 16384.0f;
-
-    // ±250°/s range → 131 LSB/°/s
-    float gxDps = gx / 131.0f;
-    float gyDps = gy / 131.0f;
-    _gzDps      = gz / 131.0f;   // shared with _readMag for yaw complementary filter
-
-    float accelRoll  = atan2f(ayg, azg)                        * 180.0f / (float)M_PI;
-    float accelPitch = atan2f(-axg, sqrtf(ayg*ayg + azg*azg)) * 180.0f / (float)M_PI;
-
-    if (_imuDtS > 0.0f && _imuDtS < 0.5f) {
-        // Complementary filter: trust gyro for fast motion, anchor to accel long-term
-        _data.rollDeg  = IMU_COMP_ALPHA * (_data.rollDeg  + gxDps * _imuDtS)
-                       + (1.0f - IMU_COMP_ALPHA) * accelRoll;
-        _data.pitchDeg = IMU_COMP_ALPHA * (_data.pitchDeg + gyDps * _imuDtS)
-                       + (1.0f - IMU_COMP_ALPHA) * accelPitch;
-    } else {
-        // First call or stale reading — seed directly from accelerometer
-        _data.rollDeg  = accelRoll;
-        _data.pitchDeg = accelPitch;
-    }
-}
-
 void SensorManager::_readMag() {
     if (!_magOk) return;
     Wire.beginTransmission(QMC5883L_I2C_ADDR);
@@ -196,9 +143,6 @@ void SensorManager::_pushSlow() {
 }
 
 void SensorManager::_pushFast() {
-    Serial2.printf("$IMU ok=%d,roll=%.2f,pitch=%.2f\r\n",
-                   _data.imuOk ? 1 : 0,
-                   _data.rollDeg, _data.pitchDeg);
     Serial2.printf("$MAG ok=%d,mx=%d,my=%d,mz=%d\r\n",
                    _data.magOk ? 1 : 0,
                    _data.magRawX, _data.magRawY, _data.magRawZ);
@@ -214,10 +158,9 @@ void SensorManager::sensorTask(void* param) {
     for (;;) {
         uint32_t now = millis();
 
-        // IMU + compass: read and push at 20 Hz
+        // Compass: read and push at 20 Hz
         if (now - sm->_lastImuPushMs >= SENSOR_IMU_PUSH_MS) {
             sm->_lastImuPushMs = now;
-            sm->_readIMU();
             sm->_readMag();
             sm->_pushFast();
         }

@@ -34,7 +34,14 @@
       "WebFetch(domain:pyimagesearch.com)",
       "WebFetch(domain:learnopencv.com)",
       "Bash(C:.piopenvScriptspio.exe run:*)",
-      "Bash(\"/c/.pio/penv/Scripts/pio.exe\" run:*)"
+      "Bash(\"/c/.pio/penv/Scripts/pio.exe\" run:*)",
+      "Bash(ls C:/Users/snyder/Documents/PlatformIO/Projects/PTZ_controller/pi/*.py)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(~/.platformio/penv/Scripts/pio run:*)",
+      "Bash(ssh:*)",
+      "Bash(sshpass:*)"
     ]
   }
 }

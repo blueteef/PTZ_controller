@@ -158,6 +158,13 @@ MAG_HDG_OFFSET_DEG = float(os.getenv("MAG_HDG_OFFSET_DEG", "0.0"))
 # Invert compass direction (true = flip N/S, useful if sensor mounted backwards)
 MAG_HDG_INVERT = _env_bool("MAG_HDG_INVERT", "false")
 
+# ---------------------------------------------------------------------------
+# IMU — Pi-side reader (MPU-6050 on Pi I2C, end-effector mount)
+# ---------------------------------------------------------------------------
+IMU_I2C_BUS   = int(os.getenv("IMU_I2C_BUS",   "1"))     # i2c-1: GPIO 2/3
+IMU_RATE_HZ   = int(os.getenv("IMU_RATE_HZ",   "50"))    # complementary filter rate
+IMU_COMP_ALPHA = float(os.getenv("IMU_COMP_ALPHA", "0.95"))  # gyro/accel blend
+
 # Apply tilt compensation to compass using IMU roll/pitch.
 # Set false if compass is mounted on the pan axis (doesn't tilt with camera)
 # or if the IMU and compass are on different axes.

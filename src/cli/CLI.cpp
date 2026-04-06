@@ -618,11 +618,7 @@ void CLI::cmdSensor(int /*argc*/, char** /*argv*/) {
         print("BMP280:  [not found]\r\n");
     }
 
-    if (d.imuOk) {
-        printf("MPU6050: Roll=%.2f°  Pitch=%.2f°\r\n", d.rollDeg, d.pitchDeg);
-    } else {
-        print("MPU6050: [not found]\r\n");
-    }
+    print("MPU6050: moved to Pi I2C — read via imu_reader\r\n");
 
     if (d.magOk) {
         printf("QMC5883L: raw mx=%d my=%d mz=%d\r\n", d.magRawX, d.magRawY, d.magRawZ);
