@@ -27,6 +27,11 @@
         <div id="video-wrap">
           <img id="feed" src="/stream" alt="camera feed">
           <canvas id="overlay"></canvas>
+          <!-- Thermal PIP overlay -->
+          <div id="thermal-pip" class="pip-hidden">
+            <img id="thermal-feed" src="" alt="thermal">
+            <span class="pip-label">THERMAL</span>
+          </div>
         </div>
         <!-- Detection mode selector -->
         <div id="mode-bar">
@@ -36,6 +41,8 @@
             <option value="face">Faces</option>
             <option value="yolo">Objects (YOLO)</option>
           </select>
+          <span class="mode-sep"></span>
+          <button id="btn-thermal" class="btn-mode-bar">Thermal: Off</button>
         </div>
       </div>
 

@@ -86,6 +86,16 @@ MJPEG_QUALITY      = int(os.getenv("MJPEG_QUALITY", "75"))
 MJPEG_TARGET_FPS   = CAMERA_FPS   # stream pacing
 
 # ---------------------------------------------------------------------------
+# Thermal camera (Topdon TC002 or compatible UVC thermal imager)
+# ---------------------------------------------------------------------------
+# THERMAL_DEVICE: "auto" = scan /dev/video0–19 for the first working device,
+#                 "/dev/videoX" = use a specific device,
+#                 "none" = disable thermal camera entirely.
+THERMAL_DEVICE   = os.getenv("THERMAL_DEVICE", "auto")
+# THERMAL_COLORMAP: OpenCV colormap name (INFERNO, JET, HOT, RAINBOW, etc.)
+THERMAL_COLORMAP = os.getenv("THERMAL_COLORMAP", "INFERNO")
+
+# ---------------------------------------------------------------------------
 # Vision / detection
 # ---------------------------------------------------------------------------
 YOLO_CONFIDENCE    = float(os.getenv("YOLO_CONFIDENCE", "0.45"))

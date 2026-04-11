@@ -350,6 +350,47 @@ function wireFaceRecognition() {
 }
 
 // ---------------------------------------------------------------------------
+// Thermal PIP
+// ---------------------------------------------------------------------------
+
+function wireThermal() {
+  const btn  = document.getElementById("btn-thermal");
+  const pip  = document.getElementById("thermal-pip");
+  const img  = document.getElementById("thermal-feed");
+
+  let active = false;
+
+  btn.onclick = () => {
+    active = !active;
+    if (active) {
+      img.src = "/thermal/stream";
+      pip.classList.remove("pip-hidden");
+      btn.textContent = "Thermal: ON";
+      btn.classList.add("active");
+    } else {
+      img.src = "";
+      pip.classList.add("pip-hidden");
+      btn.textContent = "Thermal: Off";
+      btn.classList.remove("active");
+    }
+  };
+
+  // Clicking the PIP itself also toggles it off
+  pip.onclick = () => btn.click();
+
+  // Disable button if thermal camera is not available
+  fetch("/thermal/status")
+    .then(r => r.json())
+    .then(data => {
+      if (!data.available) {
+        btn.disabled = true;
+        btn.title = "Thermal camera not detected";
+      }
+    })
+    .catch(() => {});
+}
+
+// ---------------------------------------------------------------------------
 // Boot
 // ---------------------------------------------------------------------------
 
@@ -383,6 +424,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   wireStabilization();
   wireCompassCal();
   wireFaceRecognition();
+  wireThermal();
   loadFaces();
   initOverlay(
     document.getElementById("feed"),
