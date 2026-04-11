@@ -22,6 +22,7 @@ from __future__ import annotations
 import logging
 import threading
 import time
+from pathlib import Path
 from typing import Optional
 
 import cv2
@@ -34,6 +35,31 @@ log = logging.getLogger(__name__)
 _PROBE_PATHS     = [f"/dev/video{i}" for i in range(20)]
 _RECONNECT_DELAY = 2.0   # seconds between reconnect attempts
 _MAX_FAIL_FRAMES = 30    # consecutive read failures before reconnect
+
+# Substrings that identify Pi camera / ISP kernel devices — never thermal.
+_PI_CAMERA_KEYWORDS = ("unicam", "bcm2835", "rpi", "isp", "imx708", "ov5647")
+
+
+def _is_usb_video_device(path: str) -> bool:
+    """Return False for Pi camera ISP/sensor devices; True for USB UVC devices.
+
+    Reads the V4L2 card name from sysfs without opening the device, so it
+    cannot interfere with Picamera2's exclusive access to the native camera.
+    """
+    name = path.replace("/dev/", "")          # "video0", "video10", …
+    sysfs = Path(f"/sys/class/video4linux/{name}/name")
+    try:
+        card = sysfs.read_text().strip().lower()
+        for kw in _PI_CAMERA_KEYWORDS:
+            if kw in card:
+                log.debug("Skipping %s (Pi camera device: %r)", path, card)
+                return False
+        return True
+    except FileNotFoundError:
+        # Device doesn't exist in sysfs — skip it
+        return False
+    except Exception:
+        return True   # Can't tell — let the open probe decide
 
 
 def _colormap_id() -> int:
@@ -119,6 +145,8 @@ class ThermalCamera:
         if hint != "auto":
             return hint if self._probe(hint) else None
         for path in _PROBE_PATHS:
+            if not _is_usb_video_device(path):
+                continue
             if self._probe(path):
                 log.info("Thermal: found device at %s", path)
                 return path
