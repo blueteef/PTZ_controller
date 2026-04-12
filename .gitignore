@@ -12,3 +12,9 @@ __pycache__/
 .vscode/c_cpp_properties.json
 .vscode/launch.json
 .vscode/ipch
+
+# KiCAD — generated/transient files
+KiCAD Models/**/#*
+KiCAD Models/**/*lck
+KiCAD Models/**/fp-info-cache
+KiCAD Models/**/*-backups/

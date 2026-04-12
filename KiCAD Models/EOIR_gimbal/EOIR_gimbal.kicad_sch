@@ -1,0 +1,440 @@
+(kicad_sch
+	(version 20250114)
+	(generator "eeschema")
+	(generator_version "9.0")
+	(uuid "72fd4dad-0c7a-4c80-8b75-e25fc2b02f57")
+	(paper "A4")
+	(lib_symbols)
+	(sheet
+		(at 66.04 38.1)
+		(size 38.1 44.45)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0.0000)
+		)
+		(uuid "4249674d-d6c4-4c87-aec4-8e635a17f2a2")
+		(property "Sheetname" "STATIONARY SIDE"
+			(at 66.04 37.3884 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left bottom)
+			)
+		)
+		(property "Sheetfile" "stationary_side.kicad_sch"
+			(at 66.04 83.1346 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+			)
+		)
+		(pin "CAT6_RX+" output
+			(at 104.14 72.39 0)
+			(uuid "5aa7adf1-ed9a-4a90-a4b0-1d01e77eef44")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "CAT6_RX-" output
+			(at 104.14 69.85 0)
+			(uuid "7bea0704-20e2-4049-9a52-965fc3f1e890")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "CAT6_TX+" output
+			(at 104.14 67.31 0)
+			(uuid "2c147d1e-c717-4f6c-9604-9aedfea7391b")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "CAT6_TX-" output
+			(at 104.14 74.93 0)
+			(uuid "8f6b30b8-9011-4cc3-b06d-057fdb7d3205")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "USBD+" output
+			(at 104.14 60.96 0)
+			(uuid "c9101c8e-add1-46d0-9828-315a5182613d")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "USBD-" output
+			(at 104.14 58.42 0)
+			(uuid "388ba471-7ceb-411e-87c3-dbd0743bdb2d")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "USBV+" output
+			(at 104.14 53.34 0)
+			(uuid "7eacb231-d053-484c-a806-c65fc797ffe9")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "USBV-" output
+			(at 104.14 55.88 0)
+			(uuid "53fdb39c-0bf2-4e35-8e58-977bab43ffcc")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "VDD+" output
+			(at 104.14 44.45 0)
+			(uuid "4f0c3229-a957-4c7a-a240-ab94bec8ec59")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "VDD-" output
+			(at 104.14 46.99 0)
+			(uuid "b00d6948-896e-4b37-b51b-ab39c680fcf9")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(instances
+			(project "EOIR_gimbal"
+				(path "/72fd4dad-0c7a-4c80-8b75-e25fc2b02f57"
+					(page "2")
+				)
+			)
+		)
+	)
+	(sheet
+		(at 113.03 38.1)
+		(size 38.1 44.45)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0.0000)
+		)
+		(uuid "7dec851d-ec73-40e5-9f10-4af2f7e40dc5")
+		(property "Sheetname" "PAN_CENTRIC"
+			(at 113.03 37.3884 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left bottom)
+			)
+		)
+		(property "Sheetfile" "pan_centric.kicad_sch"
+			(at 113.03 83.1346 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+			)
+		)
+		(pin "+5V" bidirectional
+			(at 151.13 58.42 0)
+			(uuid "2b18de5e-82fc-43b1-a4d7-a5a0fa688f2f")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "GND" bidirectional
+			(at 151.13 55.88 0)
+			(uuid "0330bd96-84b9-46d4-937c-9913e512ff96")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "PI.17" bidirectional
+			(at 151.13 53.34 0)
+			(uuid "6b7eb145-a7f4-4eef-a6e9-40431a403d43")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "PI.RX" input
+			(at 151.13 48.26 0)
+			(uuid "3983d6e1-b147-4fad-8e68-531325f592a4")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "PI.TX" input
+			(at 151.13 50.8 0)
+			(uuid "d8318e3d-d1c1-4132-8cf2-ef94dc3fb0e1")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "USBD+" input
+			(at 113.03 60.96 180)
+			(uuid "2cf20993-7524-491c-bdf0-53383810fedd")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "USBD-" input
+			(at 113.03 58.42 180)
+			(uuid "5bce1ba6-6f9b-4399-a184-4b82e581502c")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "USBV+" input
+			(at 113.03 53.34 180)
+			(uuid "d18a869d-38ca-4de1-bd57-95cb031d12cd")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "USBV-" input
+			(at 113.03 55.88 180)
+			(uuid "8581d518-25fc-4d88-9927-5b6492fb196c")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "VDD+" input
+			(at 113.03 44.45 180)
+			(uuid "98f45e5b-5652-4f26-a653-6cb287e71d4e")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "VDD-" input
+			(at 113.03 46.99 180)
+			(uuid "466c97ae-57cd-4882-a772-3d677c973a86")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(instances
+			(project "EOIR_gimbal"
+				(path "/72fd4dad-0c7a-4c80-8b75-e25fc2b02f57"
+					(page "3")
+				)
+			)
+		)
+	)
+	(sheet
+		(at 158.75 38.1)
+		(size 36.83 44.45)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0.0000)
+		)
+		(uuid "aa5e2796-fbdb-4244-84e9-aad2cb8c9bdc")
+		(property "Sheetname" "TILT CENTRIC"
+			(at 158.75 37.3884 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left bottom)
+			)
+		)
+		(property "Sheetfile" "tilt_centric.kicad_sch"
+			(at 158.75 83.1346 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+			)
+		)
+		(pin "+5V" input
+			(at 158.75 58.42 180)
+			(uuid "2cc80056-b051-4b0d-a853-875c6df0ead9")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "CAT6_RX+" bidirectional
+			(at 158.75 72.39 180)
+			(uuid "08d96f42-bf19-4302-a790-3458fec422ac")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "CAT6_RX-" bidirectional
+			(at 158.75 69.85 180)
+			(uuid "ff94ea8c-83ba-45ba-8963-24ea877864fb")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "CAT6_TX+" bidirectional
+			(at 158.75 67.31 180)
+			(uuid "5ef70a70-f204-427f-9b8b-284aa1a55068")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "CAT6_TX-" bidirectional
+			(at 158.75 74.93 180)
+			(uuid "43d6851a-c047-4064-9bb4-b8eb6e9ca454")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "GND" input
+			(at 158.75 55.88 180)
+			(uuid "c2b7ca9d-e183-494b-b25c-8bf66cdb0c40")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "PI.17" input
+			(at 158.75 53.34 180)
+			(uuid "02710509-d7bf-48b5-bbb7-0012d7b1ca85")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "PI.RX" input
+			(at 158.75 48.26 180)
+			(uuid "5af1ea4c-075b-4782-9f59-55175d252966")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "PI.TX" input
+			(at 158.75 50.8 180)
+			(uuid "7dd2ded4-7c1f-486b-bb30-348893280134")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(instances
+			(project "EOIR_gimbal"
+				(path "/72fd4dad-0c7a-4c80-8b75-e25fc2b02f57"
+					(page "4")
+				)
+			)
+		)
+	)
+	(sheet_instances
+		(path "/"
+			(page "1")
+		)
+	)
+	(embedded_fonts no)
+)

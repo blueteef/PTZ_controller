@@ -1,0 +1,5 @@
+(sym_lib_table
+  (version 7)
+  (lib (name "esp32_mod")(type "KiCad")(uri "${KIPRJMOD}/esp32_mod.kicad_sym")(options "")(descr ""))
+  (lib (name "gimbal_project")(type "KiCad")(uri "${KIPRJMOD}/gimbal_project.kicad_sym")(options "")(descr ""))
+)
