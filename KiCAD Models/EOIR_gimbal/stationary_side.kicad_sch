@@ -704,6 +704,17 @@
 			(embedded_fonts no)
 		)
 	)
+	(text "SLIPRING REFERENCE TABLE\n"
+		(exclude_from_sim no)
+		(at 208.28 82.55 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+				(italic yes)
+			)
+		)
+		(uuid "5cbf0621-430e-496e-89d3-ed869820eefa")
+	)
 	(no_connect
 		(at 95.25 78.74)
 		(uuid "07f26eb4-69cb-4eae-bb83-aae6a72828b1")
@@ -1038,7 +1049,8 @@
 				(margins 0.9525 0.9525 0.9525 0.9525)
 				(span 1 1)
 				(fill
-					(type none)
+					(type color)
+					(color 255 0 0 1)
 				)
 				(effects
 					(font
@@ -1055,7 +1067,8 @@
 				(margins 0.9525 0.9525 0.9525 0.9525)
 				(span 1 1)
 				(fill
-					(type none)
+					(type color)
+					(color 255 0 0 1)
 				)
 				(effects
 					(font
@@ -1065,14 +1078,15 @@
 				)
 				(uuid "a45c80d5-fa9d-4ee8-a21f-e7069a7d62fb")
 			)
-			(table_cell "BLACK"
+			(table_cell "ORANGE"
 				(exclude_from_sim no)
 				(at 189.23 88.9 0)
 				(size 20 2.54)
 				(margins 0.9525 0.9525 0.9525 0.9525)
 				(span 1 1)
 				(fill
-					(type none)
+					(type color)
+					(color 255 0 0 1)
 				)
 				(effects
 					(font
@@ -1082,14 +1096,15 @@
 				)
 				(uuid "2d704db5-8722-495e-8ea8-6fe06557e6dd")
 			)
-			(table_cell "VDD-"
+			(table_cell "VDD+"
 				(exclude_from_sim no)
 				(at 209.23 88.9 0)
 				(size 20 2.54)
 				(margins 0.9525 0.9525 0.9525 0.9525)
 				(span 1 1)
 				(fill
-					(type none)
+					(type color)
+					(color 255 0 0 1)
 				)
 				(effects
 					(font
@@ -1099,14 +1114,15 @@
 				)
 				(uuid "96ff67fc-653f-4c92-ab7b-61c36d267e9b")
 			)
-			(table_cell "WHITE"
+			(table_cell "BLACK"
 				(exclude_from_sim no)
 				(at 189.23 91.44 0)
 				(size 20 2.54)
 				(margins 0.9525 0.9525 0.9525 0.9525)
 				(span 1 1)
 				(fill
-					(type none)
+					(type color)
+					(color 132 132 132 1)
 				)
 				(effects
 					(font
@@ -1116,14 +1132,15 @@
 				)
 				(uuid "bbb51372-a3c7-40b6-9aaa-e0693a80f223")
 			)
-			(table_cell "USBD-"
+			(table_cell "VDD-"
 				(exclude_from_sim no)
 				(at 209.23 91.44 0)
 				(size 20 2.54)
 				(margins 0.9525 0.9525 0.9525 0.9525)
 				(span 1 1)
 				(fill
-					(type none)
+					(type color)
+					(color 132 132 132 1)
 				)
 				(effects
 					(font
@@ -1140,7 +1157,8 @@
 				(margins 0.9525 0.9525 0.9525 0.9525)
 				(span 1 1)
 				(fill
-					(type none)
+					(type color)
+					(color 132 132 132 1)
 				)
 				(effects
 					(font
@@ -1157,7 +1175,8 @@
 				(margins 0.9525 0.9525 0.9525 0.9525)
 				(span 1 1)
 				(fill
-					(type none)
+					(type color)
+					(color 132 132 132 1)
 				)
 				(effects
 					(font
@@ -1167,7 +1186,7 @@
 				)
 				(uuid "4d100465-ac03-4977-b2e0-804769b627ba")
 			)
-			(table_cell "ORANGE"
+			(table_cell "WHITE"
 				(exclude_from_sim no)
 				(at 189.23 96.52 0)
 				(size 20 2.54)
@@ -1184,7 +1203,7 @@
 				)
 				(uuid "503c3636-9f30-495a-bdc8-b311596edd7d")
 			)
-			(table_cell "VDD+"
+			(table_cell "USBD-"
 				(exclude_from_sim no)
 				(at 209.23 96.52 0)
 				(size 20 2.54)
@@ -1310,7 +1329,8 @@
 				(margins 0.9525 0.9525 0.9525 0.9525)
 				(span 1 1)
 				(fill
-					(type none)
+					(type color)
+					(color 255 0 255 1)
 				)
 				(effects
 					(font
@@ -1320,14 +1340,15 @@
 				)
 				(uuid "caf989a7-f390-475b-9d17-0a8366bfdd4a")
 			)
-			(table_cell "CAT6_RX-"
+			(table_cell "CAT6_RX-/PANa1"
 				(exclude_from_sim no)
 				(at 209.23 106.68 0)
 				(size 20 2.54)
 				(margins 0.9525 0.9525 0.9525 0.9525)
 				(span 1 1)
 				(fill
-					(type none)
+					(type color)
+					(color 255 0 255 1)
 				)
 				(effects
 					(font
@@ -1344,7 +1365,8 @@
 				(margins 0.9525 0.9525 0.9525 0.9525)
 				(span 1 1)
 				(fill
-					(type none)
+					(type color)
+					(color 255 0 255 1)
 				)
 				(effects
 					(font
@@ -1354,14 +1376,15 @@
 				)
 				(uuid "a8895bc1-2bbc-4f48-8391-dc0cb911cebb")
 			)
-			(table_cell "CAT6_RX+"
+			(table_cell "CAT6_RX+/PANa2"
 				(exclude_from_sim no)
 				(at 209.23 109.22 0)
 				(size 20 2.54)
 				(margins 0.9525 0.9525 0.9525 0.9525)
 				(span 1 1)
 				(fill
-					(type none)
+					(type color)
+					(color 255 0 255 1)
 				)
 				(effects
 					(font
@@ -1378,7 +1401,8 @@
 				(margins 0.9525 0.9525 0.9525 0.9525)
 				(span 1 1)
 				(fill
-					(type none)
+					(type color)
+					(color 255 0 255 1)
 				)
 				(effects
 					(font
@@ -1388,14 +1412,15 @@
 				)
 				(uuid "b6e5a5b6-7157-40c3-82ef-b1a24cc37836")
 			)
-			(table_cell "CAT6_TX-"
+			(table_cell "CAT6_TX-/PANb1"
 				(exclude_from_sim no)
 				(at 209.23 111.76 0)
 				(size 20 2.54)
 				(margins 0.9525 0.9525 0.9525 0.9525)
 				(span 1 1)
 				(fill
-					(type none)
+					(type color)
+					(color 255 0 255 1)
 				)
 				(effects
 					(font
@@ -1412,7 +1437,8 @@
 				(margins 0.9525 0.9525 0.9525 0.9525)
 				(span 1 1)
 				(fill
-					(type none)
+					(type color)
+					(color 255 0 255 1)
 				)
 				(effects
 					(font
@@ -1422,14 +1448,15 @@
 				)
 				(uuid "12a8e171-bdb9-4c50-bb9d-5f149bc422c3")
 			)
-			(table_cell "CAT6_TX+"
+			(table_cell "CAT6_TX+/PANb2"
 				(exclude_from_sim no)
 				(at 209.23 114.3 0)
 				(size 20 2.54)
 				(margins 0.9525 0.9525 0.9525 0.9525)
 				(span 1 1)
 				(fill
-					(type none)
+					(type color)
+					(color 255 0 255 1)
 				)
 				(effects
 					(font
@@ -1593,10 +1620,9 @@
 		(in_bom yes)
 		(on_board yes)
 		(dnp no)
-		(fields_autoplaced yes)
 		(uuid "1f07edad-6507-4a05-aa26-59ac05760250")
 		(property "Reference" "U2"
-			(at 118.11 76.2 0)
+			(at 118.11 78.74 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -1609,6 +1635,7 @@
 				(font
 					(size 1.27 1.27)
 				)
+				(hide yes)
 			)
 		)
 		(property "Footprint" ""
