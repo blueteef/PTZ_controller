@@ -35,12 +35,18 @@ MODEL_YOLO_PATH      = str(MODEL_DIR / "yolov8n.pt")
 MODEL_OBJECT_PATH    = str(MODEL_DIR / "efficientdet_lite0_int8.tflite")
 
 # ---------------------------------------------------------------------------
-# ESP32 serial bridge
+# ESP32 serial bridge (v1 / fallback)
 # ---------------------------------------------------------------------------
 SERIAL_PORT        = os.getenv("SERIAL_PORT", "/dev/serial0")
 SERIAL_BAUD        = int(os.getenv("SERIAL_BAUD", "115200"))
 SERIAL_TIMEOUT     = 0.1   # seconds — read timeout per call
 SERIAL_RECONNECT_S = 2.0   # wait between reconnect attempts
+
+# ---------------------------------------------------------------------------
+# CAN bus (v2 hardware — python-can socketcan)
+# ---------------------------------------------------------------------------
+CAN_CHANNEL = os.getenv("CAN_CHANNEL", "can0")
+CAN_BITRATE = int(os.getenv("CAN_BITRATE", "500000"))
 
 # ---------------------------------------------------------------------------
 # Camera
