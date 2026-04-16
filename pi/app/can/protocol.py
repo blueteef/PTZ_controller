@@ -124,7 +124,12 @@ def _handle_pos_report(axis, pos_cdeg, vel_cdeg_s, flags):
         app_state.tilt_deg = pos_cdeg / 100.0
 
 def _handle_imu(roll, pitch, yaw):
-    pass  # TODO: feed into stabilization if needed
+    # TODO: vehicle/platform stabilization — this is the STATIONARY node IMU.
+    # Apply as a coarse position correction to pan/tilt commands to compensate
+    # for platform motion (vehicle driving, mount vibration, etc.).
+    # The tilt end-effector IMU is read directly by the Pi (app/imu_reader.py,
+    # IMU_I2C_BUS) and feeds a separate fine stabilization loop — do not conflate.
+    pass
 
 def _handle_gps(lat, lon):
     pass  # TODO: store in app_state if needed

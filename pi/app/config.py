@@ -175,7 +175,15 @@ MAG_HDG_OFFSET_DEG = float(os.getenv("MAG_HDG_OFFSET_DEG", "0.0"))
 MAG_HDG_INVERT = _env_bool("MAG_HDG_INVERT", "false")
 
 # ---------------------------------------------------------------------------
-# IMU — Pi-side reader (MPU-6050 on Pi I2C, end-effector mount)
+# IMU — tilt end-effector MPU-6050 (Pi I2C bus, GPIO 2/3)
+#
+# This is the TILT-CENTRIC IMU — mounted at the camera/end-effector for fine
+# camera stabilization and acceleration compensation.
+#
+# The VEHICLE/PLATFORM IMU is a separate MPU-6050 on the stationary ESP32
+# I2C bus. It reports vehicle attitude to the CAN bus as MSG_SENSOR_IMU and
+# is used to correct for gross platform motion. These two sensors serve
+# independent roles and are read by different nodes.
 # ---------------------------------------------------------------------------
 IMU_I2C_BUS   = int(os.getenv("IMU_I2C_BUS",   "1"))     # i2c-1: GPIO 2/3
 IMU_RATE_HZ   = int(os.getenv("IMU_RATE_HZ",   "50"))    # complementary filter rate

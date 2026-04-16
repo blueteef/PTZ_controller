@@ -60,6 +60,10 @@
 // Sensor I2C addresses (informational)
 // ---------------------------------------------------------------------------
 // HMC5883L compass : 0x1E
-// MPU-6050 IMU     : 0x68
+// MPU-6050 IMU     : 0x68  — VEHICLE/PLATFORM stabilization
+//                            Reports vehicle attitude to CAN as MSG_SENSOR_IMU.
+//                            Used to correct for platform motion (vehicle driving, vibration).
+//                            A second MPU-6050 lives on the Pi I2C bus at the tilt end-effector
+//                            for fine camera stabilization — these are two separate sensors.
 // BMP280 baro      : 0x76
 // INA226 power     : 0x40
