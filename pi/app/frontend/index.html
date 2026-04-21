@@ -27,10 +27,15 @@
         <div id="video-wrap">
           <img id="feed" src="/stream" alt="camera feed">
           <canvas id="overlay"></canvas>
-          <!-- Thermal PIP overlay -->
+          <!-- Thermal PIP overlay (bottom-right) -->
           <div id="thermal-pip" class="pip-hidden">
             <img id="thermal-feed" src="" alt="thermal">
             <span class="pip-label">THERMAL</span>
+          </div>
+          <!-- Webcam PIP overlay (bottom-left) -->
+          <div id="webcam-pip" class="pip-hidden">
+            <img id="webcam-feed" src="" alt="webcam">
+            <span class="pip-label">WEBCAM</span>
           </div>
         </div>
         <!-- Detection mode selector -->
@@ -42,6 +47,7 @@
             <option value="yolo">Objects (YOLO)</option>
           </select>
           <span class="mode-sep"></span>
+          <button id="btn-webcam"  class="btn-mode-bar">Webcam: Off</button>
           <button id="btn-thermal" class="btn-mode-bar">Thermal: Off</button>
         </div>
       </div>

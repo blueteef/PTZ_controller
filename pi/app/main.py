@@ -33,11 +33,13 @@ from app.serial_bridge.bridge import bridge
 from app.imu.reader import imu_reader
 from app.camera.capture import camera
 from app.camera.thermal import thermal_camera
+from app.camera.webcam import webcam
 from app.vision.pipeline import pipeline
 import app.vision.tracker as tracker_module
 from app.vision.tracker import GimbalTracker
 from app.api import router_stream, router_control, router_detection, router_settings, router_faces
 from app.api import router_thermal
+from app.api import router_webcam
 from app import db
 
 logging.basicConfig(
@@ -61,6 +63,7 @@ async def lifespan(app: FastAPI):
     imu_reader.start()
     camera.start()
     thermal_camera.start()
+    webcam.start()
     pipeline.start()
 
     # Inject bridge into tracker
@@ -76,6 +79,7 @@ async def lifespan(app: FastAPI):
     pipeline.stop()
     camera.stop()
     thermal_camera.stop()
+    webcam.stop()
     imu_reader.stop()
     bridge.stop()
     log.info("Shutdown complete")
@@ -95,6 +99,7 @@ app.include_router(router_detection.router)
 app.include_router(router_settings.router)
 app.include_router(router_faces.router)
 app.include_router(router_thermal.router)
+app.include_router(router_webcam.router)
 
 # ── Static files (frontend) ────────────────────────────────────────────────
 _frontend = Path(__file__).parent / "frontend"

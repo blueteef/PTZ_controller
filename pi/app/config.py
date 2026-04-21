@@ -99,6 +99,17 @@ MJPEG_QUALITY      = int(os.getenv("MJPEG_QUALITY", "75"))
 MJPEG_TARGET_FPS   = CAMERA_FPS   # stream pacing
 
 # ---------------------------------------------------------------------------
+# Webcam (secondary visible camera — USB UVC, not the TC001 thermal)
+# ---------------------------------------------------------------------------
+# WEBCAM_DEVICE: "auto" = scan /dev/video0–19, skip TC001 and Pi camera devices
+#                "/dev/videoX" = use specific device
+#                "none" = disable
+WEBCAM_DEVICE  = os.getenv("WEBCAM_DEVICE",  "auto")
+WEBCAM_WIDTH   = int(os.getenv("WEBCAM_WIDTH",  "1280"))
+WEBCAM_HEIGHT  = int(os.getenv("WEBCAM_HEIGHT", "720"))
+WEBCAM_FPS     = int(os.getenv("WEBCAM_FPS",    "30"))
+
+# ---------------------------------------------------------------------------
 # Thermal camera (Topdon TC002 or compatible UVC thermal imager)
 # ---------------------------------------------------------------------------
 # THERMAL_DEVICE: "auto" = scan /dev/video0–19 for the first working device,

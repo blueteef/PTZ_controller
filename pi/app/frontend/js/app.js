@@ -350,6 +350,77 @@ function wireFaceRecognition() {
 }
 
 // ---------------------------------------------------------------------------
+// Webcam PIP / Main
+// ---------------------------------------------------------------------------
+
+function wireWebcam() {
+  const btn      = document.getElementById("btn-webcam");
+  const pip      = document.getElementById("webcam-pip");
+  const pipImg   = document.getElementById("webcam-feed");
+  const pipLabel = pip.querySelector(".pip-label");
+  const mainFeed = document.getElementById("feed");
+  const videoWrap = document.getElementById("video-wrap");
+  const overlay  = document.getElementById("overlay");
+
+  // 0 = off, 1 = webcam PIP (IMX462 main), 2 = webcam main (IMX462 in PIP)
+  let state = 0;
+
+  function setSrc(el, url) {
+    el.src = "";
+    el.src = url ? url + "?t=" + Date.now() : "";
+  }
+
+  function apply() {
+    if (state === 0) {
+      setSrc(pipImg, "");
+      pip.classList.add("pip-hidden");
+      setSrc(mainFeed, "/stream");
+      videoWrap.classList.remove("webcam-main");
+      overlay.style.visibility = "";
+      btn.textContent = "Webcam: Off";
+      btn.classList.remove("active");
+    } else if (state === 1) {
+      setSrc(pipImg, "/webcam/stream");
+      pipLabel.textContent = "WEBCAM";
+      pip.classList.remove("pip-hidden");
+      setSrc(mainFeed, "/stream");
+      videoWrap.classList.remove("webcam-main");
+      overlay.style.visibility = "";
+      btn.textContent = "Webcam: PIP";
+      btn.classList.add("active");
+    } else {
+      setSrc(pipImg, "/stream");
+      pipLabel.textContent = "IMX462";
+      pip.classList.remove("pip-hidden");
+      setSrc(mainFeed, "/webcam/stream");
+      videoWrap.classList.add("webcam-main");
+      overlay.style.visibility = "hidden";
+      btn.textContent = "Webcam: Main";
+      btn.classList.add("active");
+    }
+  }
+
+  btn.onclick = () => {
+    state = (state + 1) % 3;
+    apply();
+  };
+
+  pip.onclick = () => {
+    if (state > 0) { state--; apply(); }
+  };
+
+  fetch("/webcam/status")
+    .then(r => r.json())
+    .then(data => {
+      if (!data.available) {
+        btn.disabled = true;
+        btn.title = "Webcam not detected";
+      }
+    })
+    .catch(e => console.error("Webcam status fetch failed:", e));
+}
+
+// ---------------------------------------------------------------------------
 // Thermal PIP
 // ---------------------------------------------------------------------------
 
@@ -520,6 +591,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   wireStabilization();
   wireCompassCal();
   wireFaceRecognition();
+  wireWebcam();
   wireThermal();
   loadFaces();
   initOverlay(

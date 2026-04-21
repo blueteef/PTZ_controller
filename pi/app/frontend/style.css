@@ -170,6 +170,32 @@ header {
 
 #thermal-pip.pip-hidden { display: none; }
 
+/* ── Webcam PIP overlay (bottom-left) ───────────────────────────── */
+#webcam-pip {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  width: 22%;
+  min-width: 140px;
+  max-width: 320px;
+  border: 1px solid #8af;
+  border-radius: 4px;
+  overflow: hidden;
+  z-index: 20;
+  cursor: pointer;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.6);
+  transition: opacity 0.15s;
+}
+#webcam-pip:hover { opacity: 0.85; }
+#webcam-pip img { width: 100%; display: block; }
+#webcam-pip.pip-hidden { display: none; }
+
+#video-wrap.webcam-main #feed {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
 /* ── Sidebar ─────────────────────────────────────────────────────── */
 #sidebar {
   width: 220px;
