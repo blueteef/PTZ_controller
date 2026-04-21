@@ -56,6 +56,7 @@ CAN_BITRATE = int(os.getenv("CAN_BITRATE", "500000"))
 #                 "auto"      = try picamera2 first, fall back to v4l2
 CAMERA_BACKEND = os.getenv("CAMERA_BACKEND", "v4l2")
 CAMERA_DEVICE  = os.getenv("CAMERA_DEVICE",  "/dev/video0")   # V4L2 only
+CAMERA_NUM     = int(os.getenv("CAMERA_NUM", "0"))             # Picamera2 camera index
 
 CAMERA_WIDTH   = int(os.getenv("CAMERA_WIDTH",  "1280"))
 CAMERA_HEIGHT  = int(os.getenv("CAMERA_HEIGHT", "720"))

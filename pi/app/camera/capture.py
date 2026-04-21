@@ -86,26 +86,35 @@ class CameraCapture:
 
     def _start_picamera2(self) -> None:
         try:
-            self._cam = Picamera2()
+            self._cam = Picamera2(config.CAMERA_NUM)
             cfg = self._cam.create_video_configuration(
                 main={"size": (config.CAMERA_WIDTH, config.CAMERA_HEIGHT), "format": "RGB888"},
                 controls={"FrameRate": config.CAMERA_FPS},
             )
             self._cam.configure(cfg)
             self._cam.start()
-            self._cam.set_controls({
+
+            # Base controls supported by all Pi cameras
+            controls = {
                 "Sharpness":          config.CAMERA_SHARPNESS,
                 "Contrast":           config.CAMERA_CONTRAST,
                 "NoiseReductionMode": config.CAMERA_NOISE_REDUCTION,
                 "AwbMode":            config.CAMERA_AWB_MODE,
                 "AeMeteringMode":     config.CAMERA_AE_METERING_MODE,
-                "AfMode":             config.CAMERA_AF_MODE,
-                "AfSpeed":            config.CAMERA_AF_SPEED,
-                "AfRange":            config.CAMERA_AF_RANGE,
-            })
+            }
+            # AF controls only on cameras that support it (IMX708, not IMX462)
+            if "AfMode" in self._cam.camera_controls:
+                controls.update({
+                    "AfMode":  config.CAMERA_AF_MODE,
+                    "AfSpeed": config.CAMERA_AF_SPEED,
+                    "AfRange": config.CAMERA_AF_RANGE,
+                })
+            self._cam.set_controls(controls)
+
+            model = self._cam.camera_properties.get("Model", "unknown")
             self._backend = "picamera2"
-            log.info("Camera (picamera2) started at %dx%d @ %dfps",
-                     config.CAMERA_WIDTH, config.CAMERA_HEIGHT, config.CAMERA_FPS)
+            log.info("Camera (picamera2) started: %s %dx%d @ %dfps",
+                     model, config.CAMERA_WIDTH, config.CAMERA_HEIGHT, config.CAMERA_FPS)
         except Exception as e:
             log.warning("picamera2 init failed (%s) — trying v4l2", e)
             self._cam = None
