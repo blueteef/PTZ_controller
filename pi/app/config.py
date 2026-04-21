@@ -51,6 +51,12 @@ CAN_BITRATE = int(os.getenv("CAN_BITRATE", "500000"))
 # ---------------------------------------------------------------------------
 # Camera
 # ---------------------------------------------------------------------------
+# CAMERA_BACKEND: "picamera2" = CSI camera via libcamera (IMX462, IMX708, etc.)
+#                 "v4l2"      = USB webcam via OpenCV V4L2 (current setup)
+#                 "auto"      = try picamera2 first, fall back to v4l2
+CAMERA_BACKEND = os.getenv("CAMERA_BACKEND", "v4l2")
+CAMERA_DEVICE  = os.getenv("CAMERA_DEVICE",  "/dev/video0")   # V4L2 only
+
 CAMERA_WIDTH   = int(os.getenv("CAMERA_WIDTH",  "1280"))
 CAMERA_HEIGHT  = int(os.getenv("CAMERA_HEIGHT", "720"))
 CAMERA_FPS     = int(os.getenv("CAMERA_FPS",    "30"))

@@ -186,7 +186,11 @@ class ThermalCamera:
         return int(path.replace("/dev/video", ""))
 
     def _probe(self, path: str) -> bool:
-        """Return True if the device opens and yields at least one frame."""
+        """Return True if the device accepts 256x192 and yields a frame.
+
+        Checking that the device actually negotiates 256x192 filters out
+        regular USB webcams, which will negotiate a different resolution.
+        """
         try:
             cap = cv2.VideoCapture(self._path_to_index(path), cv2.CAP_V4L2)
             if not cap.isOpened():
@@ -194,6 +198,12 @@ class ThermalCamera:
                 return False
             cap.set(cv2.CAP_PROP_FRAME_WIDTH,  256)
             cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 192)
+            actual_w = cap.get(cv2.CAP_PROP_FRAME_WIDTH)
+            actual_h = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
+            if actual_w != 256 or actual_h != 192:
+                log.debug("Skipping %s — got %dx%d not 256x192", path, int(actual_w), int(actual_h))
+                cap.release()
+                return False
             ret, frame = cap.read()
             cap.release()
             return ret and frame is not None
