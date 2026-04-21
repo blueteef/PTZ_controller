@@ -117,6 +117,9 @@ class CameraCapture:
             if not cap.isOpened():
                 log.warning("V4L2 camera not available at %s", config.CAMERA_DEVICE)
                 return
+            # Request MJPEG — USB webcams deliver 30fps at high res in MJPEG;
+            # YUYV at the same resolution is typically limited to ~5-10fps.
+            cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
             cap.set(cv2.CAP_PROP_FRAME_WIDTH,  config.CAMERA_WIDTH)
             cap.set(cv2.CAP_PROP_FRAME_HEIGHT, config.CAMERA_HEIGHT)
             cap.set(cv2.CAP_PROP_FPS,          config.CAMERA_FPS)
@@ -125,7 +128,7 @@ class CameraCapture:
             fps = cap.get(cv2.CAP_PROP_FPS)
             self._cap     = cap
             self._backend = "v4l2"
-            log.info("Camera (v4l2) started: %s %dx%d @ %.0ffps",
+            log.info("Camera (v4l2/MJPG) started: %s %dx%d @ %.0ffps",
                      config.CAMERA_DEVICE, w, h, fps)
         except Exception as e:
             log.warning("V4L2 camera init failed (%s)", e)
