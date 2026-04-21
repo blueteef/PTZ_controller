@@ -354,29 +354,52 @@ function wireFaceRecognition() {
 // ---------------------------------------------------------------------------
 
 function wireThermal() {
-  const btn  = document.getElementById("btn-thermal");
-  const pip  = document.getElementById("thermal-pip");
-  const img  = document.getElementById("thermal-feed");
+  const btn      = document.getElementById("btn-thermal");
+  const pip      = document.getElementById("thermal-pip");
+  const pipImg   = document.getElementById("thermal-feed");
+  const pipLabel = pip.querySelector(".pip-label");
+  const mainFeed = document.getElementById("feed");
+  const overlay  = document.getElementById("overlay");
 
-  let active = false;
+  // 0 = off, 1 = thermal PIP, 2 = thermal main (Pi cam in PIP)
+  let state = 0;
 
-  btn.onclick = () => {
-    active = !active;
-    if (active) {
-      img.src = "/thermal/stream";
-      pip.classList.remove("pip-hidden");
-      btn.textContent = "Thermal: ON";
-      btn.classList.add("active");
-    } else {
-      img.src = "";
+  function apply() {
+    if (state === 0) {
+      pipImg.src = "";
       pip.classList.add("pip-hidden");
+      mainFeed.src = "/stream";
+      overlay.style.visibility = "";
       btn.textContent = "Thermal: Off";
       btn.classList.remove("active");
+    } else if (state === 1) {
+      pipImg.src = "/thermal/stream";
+      pipLabel.textContent = "THERMAL";
+      pip.classList.remove("pip-hidden");
+      mainFeed.src = "/stream";
+      overlay.style.visibility = "";
+      btn.textContent = "Thermal: PIP";
+      btn.classList.add("active");
+    } else {
+      pipImg.src = "/stream";
+      pipLabel.textContent = "VISIBLE";
+      pip.classList.remove("pip-hidden");
+      mainFeed.src = "/thermal/stream";
+      overlay.style.visibility = "hidden";
+      btn.textContent = "Thermal: Main";
+      btn.classList.add("active");
     }
+  }
+
+  btn.onclick = () => {
+    state = (state + 1) % 3;
+    apply();
   };
 
-  // Clicking the PIP itself also toggles it off
-  pip.onclick = () => btn.click();
+  // Clicking the PIP steps back one state
+  pip.onclick = () => {
+    if (state > 0) { state--; apply(); }
+  };
 
   // Disable button if thermal camera is not available
   fetch("/thermal/status")
