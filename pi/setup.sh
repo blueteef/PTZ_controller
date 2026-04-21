@@ -16,7 +16,40 @@ sudo apt-get install -y \
   cmake libopenblas-dev liblapack-dev \
   libhdf5-dev libhdf5-serial-dev \
   sqlite3 \
+  can-utils \
   --no-install-recommends
+
+# ── CAN bus (MCP2515 via SPI) ──────────────────────────────────────
+# Wiring: SCK=GPIO11(P23) MOSI=GPIO10(P19) MISO=GPIO9(P21)
+#         CS=GPIO8(P24/CE0) INT=GPIO25(P22) VCC=3.3V(P1) GND(P6)
+CONFIG_TXT="/boot/firmware/config.txt"
+if ! grep -q "mcp2515-can0" "$CONFIG_TXT"; then
+  echo ""
+  echo ">>> Adding MCP2515 CAN overlay to $CONFIG_TXT"
+  echo ">>> If your module crystal is 16MHz, change oscillator=8000000 to 16000000"
+  sudo tee -a "$CONFIG_TXT" > /dev/null <<'EOF'
+
+# CAN bus — MCP2515 SPI transceiver (TJA1050 or compatible)
+dtparam=spi=on
+dtoverlay=mcp2515-can0,oscillator=8000000,interrupt=25
+EOF
+  echo ">>> Reboot required for CAN overlay to take effect"
+else
+  echo "MCP2515 CAN overlay already present in $CONFIG_TXT — skipping"
+fi
+
+# Persist can0 bringup via systemd-networkd so it survives reboots
+if [ ! -f /etc/systemd/network/can0.network ]; then
+  sudo tee /etc/systemd/network/can0.network > /dev/null <<'EOF'
+[Match]
+Name=can0
+
+[CAN]
+BitRate=500000
+EOF
+  sudo systemctl enable systemd-networkd
+  echo "Created /etc/systemd/network/can0.network — can0 will auto-up at 500k after reboot"
+fi
 
 # ── Python venv ────────────────────────────────────────────────────
 echo "[2/5] Creating Python virtual environment..."
