@@ -422,7 +422,7 @@ function wireThermal() {
       }
       wireThermalSettings(data.settings, data.colormaps);
     })
-    .catch(() => {});
+    .catch(e => console.error("Thermal status fetch failed:", e));
 }
 
 // ---------------------------------------------------------------------------
@@ -437,22 +437,25 @@ function wireThermalSettings(settings, colormaps) {
   const contSldr   = document.getElementById("thermal-contrast");
   const contVal    = document.getElementById("thermal-contrast-val");
 
+  // Show the section first — don't let a later error keep it hidden
+  section.style.display = "";
+
   // Populate colormap dropdown
-  colormaps.forEach(cm => {
+  (colormaps || []).forEach(cm => {
     const opt = document.createElement("option");
     opt.value = cm;
     opt.textContent = cm === "camera" ? "Camera Default" : cm.charAt(0) + cm.slice(1).toLowerCase();
-    if (cm === settings.colormap) opt.selected = true;
+    if (settings && cm === settings.colormap) opt.selected = true;
     cmSelect.appendChild(opt);
   });
 
   // Contrast slider is x10 internally (range 5–30 = 0.5–3.0)
-  brightSldr.value = settings.brightness;
-  brightVal.textContent = settings.brightness;
-  contSldr.value = Math.round(settings.contrast * 10);
-  contVal.textContent = settings.contrast.toFixed(1);
-
-  section.style.display = "";
+  if (settings) {
+    brightSldr.value     = settings.brightness ?? 0;
+    brightVal.textContent = settings.brightness ?? 0;
+    contSldr.value        = Math.round((settings.contrast ?? 1.0) * 10);
+    contVal.textContent   = (settings.contrast ?? 1.0).toFixed(1);
+  }
 
   let debounce = null;
   function pushSettings() {
