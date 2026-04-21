@@ -126,6 +126,18 @@
           <p class="hint">Type the true heading and press Set.</p>
         </section>
 
+        <!-- Thermal Camera -->
+        <section id="thermal-settings-section" style="display:none">
+          <h3>Thermal Camera</h3>
+          <label class="toggle-row">Colormap
+            <select id="thermal-colormap"></select>
+          </label>
+          <h3>Brightness <span id="thermal-brightness-val">0</span></h3>
+          <input id="thermal-brightness" type="range" min="-100" max="100" value="0">
+          <h3>Contrast <span id="thermal-contrast-val">1.0</span></h3>
+          <input id="thermal-contrast" type="range" min="5" max="30" value="10">
+        </section>
+
         <!-- Overlay HUD -->
         <section>
           <h3>Feed Overlay</h3>

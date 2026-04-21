@@ -411,16 +411,76 @@ function wireThermal() {
     if (state > 0) { state--; apply(); }
   };
 
-  // Disable button if thermal camera is not available
+  // Fetch status — disable button if unavailable, populate settings if available
   fetch("/thermal/status")
     .then(r => r.json())
     .then(data => {
       if (!data.available) {
         btn.disabled = true;
         btn.title = "Thermal camera not detected";
+        return;
       }
+      wireThermalSettings(data.settings, data.colormaps);
     })
     .catch(() => {});
+}
+
+// ---------------------------------------------------------------------------
+// Thermal settings sidebar
+// ---------------------------------------------------------------------------
+
+function wireThermalSettings(settings, colormaps) {
+  const section    = document.getElementById("thermal-settings-section");
+  const cmSelect   = document.getElementById("thermal-colormap");
+  const brightSldr = document.getElementById("thermal-brightness");
+  const brightVal  = document.getElementById("thermal-brightness-val");
+  const contSldr   = document.getElementById("thermal-contrast");
+  const contVal    = document.getElementById("thermal-contrast-val");
+
+  // Populate colormap dropdown
+  colormaps.forEach(cm => {
+    const opt = document.createElement("option");
+    opt.value = cm;
+    opt.textContent = cm === "camera" ? "Camera Default" : cm.charAt(0) + cm.slice(1).toLowerCase();
+    if (cm === settings.colormap) opt.selected = true;
+    cmSelect.appendChild(opt);
+  });
+
+  // Contrast slider is x10 internally (range 5–30 = 0.5–3.0)
+  brightSldr.value = settings.brightness;
+  brightVal.textContent = settings.brightness;
+  contSldr.value = Math.round(settings.contrast * 10);
+  contVal.textContent = settings.contrast.toFixed(1);
+
+  section.style.display = "";
+
+  let debounce = null;
+  function pushSettings() {
+    clearTimeout(debounce);
+    debounce = setTimeout(() => {
+      fetch("/thermal/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          colormap:   cmSelect.value,
+          brightness: parseInt(brightSldr.value),
+          contrast:   parseInt(contSldr.value) / 10,
+        }),
+      }).catch(() => {});
+    }, 80);
+  }
+
+  cmSelect.onchange = pushSettings;
+
+  brightSldr.oninput = () => {
+    brightVal.textContent = brightSldr.value;
+    pushSettings();
+  };
+
+  contSldr.oninput = () => {
+    contVal.textContent = (parseInt(contSldr.value) / 10).toFixed(1);
+    pushSettings();
+  };
 }
 
 // ---------------------------------------------------------------------------

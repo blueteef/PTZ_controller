@@ -9,13 +9,15 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from typing import Optional
 
 import cv2
 import numpy as np
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse, StreamingResponse
+from pydantic import BaseModel, Field
 
-from app.camera.thermal import thermal_camera
+from app.camera.thermal import thermal_camera, COLORMAPS
 
 router = APIRouter(prefix="/thermal")
 log    = logging.getLogger(__name__)
@@ -58,4 +60,21 @@ async def thermal_status():
     return JSONResponse({
         "available": thermal_camera.is_available,
         "device":    thermal_camera.device,
+        "settings":  thermal_camera.get_settings(),
+        "colormaps": COLORMAPS,
     })
+
+
+class ThermalSettingsBody(BaseModel):
+    colormap:   Optional[str]   = None
+    brightness: Optional[int]   = Field(None, ge=-100, le=100)
+    contrast:   Optional[float] = Field(None, ge=0.5,  le=3.0)
+
+
+@router.put("/settings")
+async def update_thermal_settings(body: ThermalSettingsBody):
+    updates = {k: v for k, v in body.model_dump().items() if v is not None}
+    if "colormap" in updates and updates["colormap"] not in COLORMAPS:
+        return JSONResponse({"error": f"unknown colormap"}, status_code=400)
+    thermal_camera.update_settings(**updates)
+    return JSONResponse(thermal_camera.get_settings())

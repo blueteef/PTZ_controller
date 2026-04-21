@@ -19,6 +19,7 @@ Frame format handling:
 
 from __future__ import annotations
 
+import dataclasses
 import logging
 import threading
 import time
@@ -31,6 +32,16 @@ import numpy as np
 from app import config
 
 log = logging.getLogger(__name__)
+
+# Colormaps available for post-processing (in addition to "camera" = pass-through)
+COLORMAPS = ["camera", "INFERNO", "JET", "HOT", "RAINBOW", "PLASMA", "VIRIDIS", "BONE"]
+
+
+@dataclasses.dataclass
+class ThermalSettings:
+    colormap:   str   = "camera"  # "camera" = use device output as-is
+    brightness: int   = 0         # -100 to +100 additive offset
+    contrast:   float = 1.0       # 0.5 to 3.0 multiplicative scale
 
 _PROBE_PATHS     = [f"/dev/video{i}" for i in range(20)]
 _RECONNECT_DELAY = 2.0   # seconds between reconnect attempts
@@ -62,44 +73,51 @@ def _is_usb_video_device(path: str) -> bool:
         return True   # Can't tell — let the open probe decide
 
 
-def _colormap_id() -> int:
-    """Return cv2.COLORMAP_* constant from the THERMAL_COLORMAP config string."""
-    name = str(getattr(config, "THERMAL_COLORMAP", "INFERNO")).upper()
-    return getattr(cv2, f"COLORMAP_{name}", cv2.COLORMAP_INFERNO)
-
-
-def _to_bgr(raw: np.ndarray, cmap: int) -> np.ndarray:
-    """Convert any frame format to a displayable BGR image."""
+def _to_bgr(raw: np.ndarray) -> np.ndarray:
+    """Convert any raw frame format to a displayable BGR image."""
     if raw.ndim == 3 and raw.shape[2] == 3:
-        return raw                                       # already BGR
+        return raw                                       # already BGR (YUYV decoded)
 
     if raw.dtype == np.uint16:
         lo = np.percentile(raw, 5)
         hi = np.percentile(raw, 95)
         span = hi - lo
-        if span > 0:
-            norm = np.clip((raw.astype(np.float32) - lo) / span, 0.0, 1.0)
-        else:
-            norm = np.zeros_like(raw, dtype=np.float32)
+        norm = np.clip((raw.astype(np.float32) - lo) / span, 0.0, 1.0) if span > 0 \
+               else np.zeros_like(raw, dtype=np.float32)
         gray8 = (norm * 255).astype(np.uint8)
     elif raw.ndim == 2:
-        gray8 = raw                                      # uint8 greyscale
+        gray8 = raw
     else:
         gray8 = raw[:, :, 0]
 
-    return cv2.applyColorMap(gray8, cmap)
+    return cv2.applyColorMap(gray8, cv2.COLORMAP_INFERNO)
+
+
+def _apply_settings(frame: np.ndarray, s: ThermalSettings) -> np.ndarray:
+    """Apply user-configured colormap and brightness/contrast to a BGR frame."""
+    if s.colormap != "camera":
+        cmap_id = getattr(cv2, f"COLORMAP_{s.colormap}", cv2.COLORMAP_INFERNO)
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        frame = cv2.applyColorMap(gray, cmap_id)
+
+    if s.brightness != 0 or s.contrast != 1.0:
+        frame = cv2.convertScaleAbs(frame, alpha=s.contrast, beta=s.brightness)
+
+    return frame
 
 
 class ThermalCamera:
     """Thread-safe thermal camera reader.  Call start() once at app startup."""
 
     def __init__(self) -> None:
-        self._lock   = threading.Lock()
+        self._lock     = threading.Lock()
         self._frame: Optional[np.ndarray] = None
-        self._stop   = threading.Event()
+        self._stop     = threading.Event()
         self._thread: Optional[threading.Thread] = None
         self.device: Optional[str] = None
         self._available = False
+        self._settings      = ThermalSettings()
+        self._settings_lock = threading.Lock()
 
     # ── Public API ────────────────────────────────────────────────────
 
@@ -111,6 +129,16 @@ class ThermalCamera:
     def current_frame(self) -> Optional[np.ndarray]:
         with self._lock:
             return self._frame
+
+    def get_settings(self) -> dict:
+        with self._settings_lock:
+            return dataclasses.asdict(self._settings)
+
+    def update_settings(self, **kwargs) -> None:
+        with self._settings_lock:
+            for k, v in kwargs.items():
+                if hasattr(self._settings, k):
+                    setattr(self._settings, k, v)
 
     def start(self) -> None:
         hint = str(getattr(config, "THERMAL_DEVICE", "auto"))
@@ -180,7 +208,6 @@ class ThermalCamera:
         return cap
 
     def _run(self) -> None:
-        cmap  = _colormap_id()
         cap   = self._open()
         fails = 0
 
@@ -197,7 +224,10 @@ class ThermalCamera:
                 continue
 
             fails = 0
-            bgr = _to_bgr(raw, cmap)
+            bgr = _to_bgr(raw)
+            with self._settings_lock:
+                s = dataclasses.replace(self._settings)
+            bgr = _apply_settings(bgr, s)
             with self._lock:
                 self._frame = bgr
 
