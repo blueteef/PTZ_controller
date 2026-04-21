@@ -153,10 +153,14 @@ class ThermalCamera:
         return None
 
     @staticmethod
-    def _probe(path: str) -> bool:
+    def _path_to_index(path: str) -> int:
+        """Convert /dev/videoN to integer N for OpenCV CAP_V4L2."""
+        return int(path.replace("/dev/video", ""))
+
+    def _probe(self, path: str) -> bool:
         """Return True if the device opens and yields at least one frame."""
         try:
-            cap = cv2.VideoCapture(path, cv2.CAP_V4L2)
+            cap = cv2.VideoCapture(self._path_to_index(path), cv2.CAP_V4L2)
             if not cap.isOpened():
                 cap.release()
                 return False
@@ -169,7 +173,7 @@ class ThermalCamera:
             return False
 
     def _open(self) -> cv2.VideoCapture:
-        cap = cv2.VideoCapture(self.device, cv2.CAP_V4L2)
+        cap = cv2.VideoCapture(self._path_to_index(self.device), cv2.CAP_V4L2)
         # TC001 only supports YUYV 256x192 — set resolution explicitly
         cap.set(cv2.CAP_PROP_FRAME_WIDTH,  256)
         cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 192)
