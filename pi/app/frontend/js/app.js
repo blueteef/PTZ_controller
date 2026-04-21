@@ -359,32 +359,42 @@ function wireThermal() {
   const pipImg   = document.getElementById("thermal-feed");
   const pipLabel = pip.querySelector(".pip-label");
   const mainFeed = document.getElementById("feed");
+  const videoWrap = document.getElementById("video-wrap");
   const overlay  = document.getElementById("overlay");
 
   // 0 = off, 1 = thermal PIP, 2 = thermal main (Pi cam in PIP)
   let state = 0;
 
+  // Cache-bust MJPEG src assignments so the browser opens a fresh connection
+  function setSrc(el, url) {
+    el.src = "";
+    el.src = url ? url + "?t=" + Date.now() : "";
+  }
+
   function apply() {
     if (state === 0) {
-      pipImg.src = "";
+      setSrc(pipImg, "");
       pip.classList.add("pip-hidden");
-      mainFeed.src = "/stream";
+      setSrc(mainFeed, "/stream");
+      videoWrap.classList.remove("thermal-main");
       overlay.style.visibility = "";
       btn.textContent = "Thermal: Off";
       btn.classList.remove("active");
     } else if (state === 1) {
-      pipImg.src = "/thermal/stream";
+      setSrc(pipImg, "/thermal/stream");
       pipLabel.textContent = "THERMAL";
       pip.classList.remove("pip-hidden");
-      mainFeed.src = "/stream";
+      setSrc(mainFeed, "/stream");
+      videoWrap.classList.remove("thermal-main");
       overlay.style.visibility = "";
       btn.textContent = "Thermal: PIP";
       btn.classList.add("active");
     } else {
-      pipImg.src = "/stream";
+      setSrc(pipImg, "/stream");
       pipLabel.textContent = "VISIBLE";
       pip.classList.remove("pip-hidden");
-      mainFeed.src = "/thermal/stream";
+      setSrc(mainFeed, "/thermal/stream");
+      videoWrap.classList.add("thermal-main");
       overlay.style.visibility = "hidden";
       btn.textContent = "Thermal: Main";
       btn.classList.add("active");
