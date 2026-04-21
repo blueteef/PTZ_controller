@@ -160,6 +160,8 @@ class ThermalCamera:
             if not cap.isOpened():
                 cap.release()
                 return False
+            cap.set(cv2.CAP_PROP_FRAME_WIDTH,  256)
+            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 192)
             ret, frame = cap.read()
             cap.release()
             return ret and frame is not None
@@ -168,9 +170,9 @@ class ThermalCamera:
 
     def _open(self) -> cv2.VideoCapture:
         cap = cv2.VideoCapture(self.device, cv2.CAP_V4L2)
-        # Request Y16 (raw 16-bit).  Device silently falls back to its default
-        # (usually pseudo-colored YUYV) if Y16 is unsupported.
-        cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"Y16 "))
+        # TC001 only supports YUYV 256x192 — set resolution explicitly
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH,  256)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 192)
         return cap
 
     def _run(self) -> None:
