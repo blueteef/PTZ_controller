@@ -93,6 +93,7 @@ ExecStart=/usr/bin/python3 ${SCRIPT_ABS}
 Restart=always
 RestartSec=5
 # Override thresholds here without editing the script:
+Environment=FAN_GPIO=18
 Environment=FAN_ON_TEMP=65
 Environment=FAN_OFF_TEMP=55
 Environment=FAN_POLL_S=5

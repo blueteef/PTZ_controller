@@ -36,7 +36,7 @@ import time
 from pathlib import Path
 
 # ── Config ────────────────────────────────────────────────────────────────────
-FAN_GPIO        = int(os.getenv("FAN_GPIO",      "17"))
+FAN_GPIO        = int(os.getenv("FAN_GPIO",      "18"))
 FAN_ON_TEMP     = float(os.getenv("FAN_ON_TEMP",  "65.0"))   # °C — turn on above
 FAN_OFF_TEMP    = float(os.getenv("FAN_OFF_TEMP", "55.0"))   # °C — turn off below
 FAN_POLL_S      = float(os.getenv("FAN_POLL_S",   "5.0"))    # seconds between checks
