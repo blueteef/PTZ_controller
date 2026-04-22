@@ -73,10 +73,51 @@ if [ ! -f "$ENV_FILE" ]; then
   echo "Created .env from template — edit it if needed"
 fi
 
-echo "[5/5] Setup complete!"
+# ── Fan control service (GPIO17, thermal-driven) ────────────────────
+# Uses system python3 + gpiozero (system package — no venv needed)
+echo "[5/5] Installing fan control service..."
+SCRIPT_ABS="$(cd "$(dirname "$0")" && pwd)/scripts/fan_control.py"
+chmod +x "$SCRIPT_ABS"
+
+if [ ! -f /etc/systemd/system/fan-control.service ]; then
+  sudo tee /etc/systemd/system/fan-control.service > /dev/null <<UNIT
+[Unit]
+Description=PTZ Pi CPU fan controller (GPIO17 thermal-driven, high-active MOSFET)
+After=multi-user.target
+# Restart on any failure — if it can't run, the fan stays ON from last exit
+
+[Service]
+Type=simple
+User=root
+ExecStart=/usr/bin/python3 ${SCRIPT_ABS}
+Restart=always
+RestartSec=5
+# Override thresholds here without editing the script:
+Environment=FAN_ON_TEMP=65
+Environment=FAN_OFF_TEMP=55
+Environment=FAN_POLL_S=5
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+  sudo systemctl daemon-reload
+  sudo systemctl enable fan-control
+  sudo systemctl start fan-control
+  echo "Fan control service installed, enabled, and started"
+else
+  echo "fan-control.service already exists — skipping (run: sudo systemctl restart fan-control to reload)"
+fi
+
+# Install fan-ctl command globally
+sudo install -m 755 "$(dirname "$0")/scripts/fan-ctl" /usr/local/bin/fan-ctl
+echo "fan-ctl installed — try: fan-ctl status"
+
+echo ""
+echo "=== Setup complete! ==="
 echo ""
 echo "Next steps:"
 echo "  source venv/bin/activate"
+echo "  fan-ctl status                       # verify fan controller is running"
 echo "  python3 scripts/test_serial.py       # verify ESP32 connection"
 echo "  bash scripts/download_models.sh      # download YOLO model"
 echo "  uvicorn app.main:app --host 0.0.0.0 --port 8000"

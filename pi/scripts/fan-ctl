@@ -1,0 +1,92 @@
+#!/bin/bash
+# fan-ctl — manual override for fan_control.service
+#
+# Usage: fan-ctl {on|off|auto|status}
+#
+#   on      Force fan on  (overrides thermal control)
+#   off     Force fan off (SUSPENDS thermal protection — use with care)
+#   auto    Return to automatic thermal control (removes override)
+#   status  Show current temperature, fan state, and service health
+
+OVERRIDE=/run/fan_override
+TEMP_PATH=/sys/class/thermal/thermal_zone0/temp
+
+require_root() {
+  if [ "$(id -u)" -ne 0 ]; then
+    echo "Error: this command requires root (sudo fan-ctl $1)" >&2
+    exit 1
+  fi
+}
+
+case "${1:-}" in
+
+  on)
+    require_root "on"
+    echo "on" > "$OVERRIDE"
+    echo "Fan forced ON"
+    ;;
+
+  off)
+    require_root "off"
+    echo ""
+    echo "  WARNING: thermal protection is now suspended."
+    echo "  The fan will NOT turn on automatically until you run: fan-ctl auto"
+    echo ""
+    echo "off" > "$OVERRIDE"
+    echo "Fan forced OFF"
+    ;;
+
+  auto)
+    require_root "auto"
+    rm -f "$OVERRIDE"
+    echo "Fan returned to automatic thermal control"
+    ;;
+
+  status)
+    # Temperature
+    if [ -r "$TEMP_PATH" ]; then
+      TEMP_RAW=$(cat "$TEMP_PATH")
+      TEMP_C=$(awk "BEGIN{printf \"%.1f\", $TEMP_RAW/1000}")
+      echo "CPU temp : ${TEMP_C}°C"
+    else
+      echo "CPU temp : unavailable"
+    fi
+
+    # Current override
+    if [ -f "$OVERRIDE" ]; then
+      OVR=$(cat "$OVERRIDE" 2>/dev/null)
+      echo "Override : ${OVR:-unknown}"
+    else
+      echo "Override : auto (thermal)"
+    fi
+
+    # GPIO state via sysfs (rough check — not reliable if pinctrl changes)
+    GPIO_VAL_PATH="/sys/class/gpio/gpio17/value"
+    if [ -r "$GPIO_VAL_PATH" ]; then
+      VAL=$(cat "$GPIO_VAL_PATH")
+      echo "GPIO17   : $([ "$VAL" = "1" ] && echo "HIGH (fan ON)" || echo "LOW (fan OFF)")"
+    fi
+
+    # Service health
+    if systemctl is-active --quiet fan-control 2>/dev/null; then
+      echo "Service  : running"
+      # Show last few log lines
+      echo ""
+      echo "--- recent log ---"
+      journalctl -u fan-control -n 8 --no-pager --output=short 2>/dev/null || true
+    else
+      echo "Service  : STOPPED  ← fan_control.py is not running"
+    fi
+    ;;
+
+  *)
+    echo "Usage: fan-ctl {on|off|auto|status}"
+    echo ""
+    echo "  on      Force fan on"
+    echo "  off     Force fan off (suspends thermal protection)"
+    echo "  auto    Return to automatic thermal control"
+    echo "  status  Show temp, fan state, and service health"
+    exit 1
+    ;;
+
+esac
