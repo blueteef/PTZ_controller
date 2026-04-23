@@ -39,6 +39,7 @@
 #define MSG_SENSOR_GPS2     0x14  // GPS extended — u8 fix, u8 sats, i16 hdg_cd, i16 spd_cm_s
 #define MSG_SENSOR_POWER    0x15  // power monitor — u16 voltage_mv, i16 current_ma
 #define MSG_SENSOR_ENV      0x16  // environment — i16 temp_cdC, u16 press_hPa
+#define MSG_RELAY_CMD       0x07  // relay control — u8 relay_id, u8 state (1=on, 0=off)
 #define MSG_FAULT           0x1F  // fault report — u8 node_id, u8 fault_code
 
 // ---------------------------------------------------------------------------
