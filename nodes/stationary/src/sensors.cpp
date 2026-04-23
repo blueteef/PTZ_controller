@@ -67,33 +67,48 @@ static void _mpu_update() {
 }
 
 // ---------------------------------------------------------------------------
-// HMC5883L — raw I2C
+// QMC5883L — raw I2C (common HMC5883L clone, address 0x0D)
 // ---------------------------------------------------------------------------
-#define MAG_ADDR        0x1E
-#define MAG_CONFIG_A    0x00
-#define MAG_CONFIG_B    0x01
-#define MAG_MODE        0x02
-#define MAG_DATA_XH     0x03
+#define MAG_ADDR        0x0D
+#define QMC_DATA_X_LSB  0x00
+#define QMC_STATUS      0x06
+#define QMC_CTRL1       0x09
+#define QMC_CTRL2       0x0A
+#define QMC_SET_RESET   0x0B
 
 static bool _mag_ok = false;
 
+static void _mag_write(uint8_t reg, uint8_t val) {
+    Wire.beginTransmission(MAG_ADDR);
+    Wire.write(reg);
+    Wire.write(val);
+    Wire.endTransmission();
+}
+
 static bool _mag_init() {
     Wire.beginTransmission(MAG_ADDR);
-    Wire.write(MAG_CONFIG_A); Wire.write(0x70);  // 8 samples, 15Hz
-    Wire.write(0x20);                             // config B: ±1.3G
-    Wire.write(0x00);                             // continuous mode
-    return Wire.endTransmission() == 0;
+    if (Wire.endTransmission() != 0) return false;
+    _mag_write(QMC_SET_RESET, 0x01);              // set/reset period
+    _mag_write(QMC_CTRL1, 0x1D);                  // continuous, 200Hz, 8G, 512 OSR
+    return true;
 }
 
 static bool _mag_read(float &hdg_deg) {
     Wire.beginTransmission(MAG_ADDR);
-    Wire.write(MAG_DATA_XH);
+    Wire.write(QMC_STATUS);
+    if (Wire.endTransmission(false) != 0) return false;
+    if (Wire.requestFrom((uint8_t)MAG_ADDR, (uint8_t)1) != 1) return false;
+    if (!(Wire.read() & 0x01)) return false;       // DRDY bit not set
+
+    Wire.beginTransmission(MAG_ADDR);
+    Wire.write(QMC_DATA_X_LSB);
     if (Wire.endTransmission(false) != 0) return false;
     if (Wire.requestFrom((uint8_t)MAG_ADDR, (uint8_t)6) != 6) return false;
 
-    int16_t x = (Wire.read() << 8) | Wire.read();
-    int16_t z = (Wire.read() << 8) | Wire.read();
-    int16_t y = (Wire.read() << 8) | Wire.read();
+    int16_t x = (int16_t)(Wire.read() | (Wire.read() << 8));
+    int16_t y = (int16_t)(Wire.read() | (Wire.read() << 8));
+    // z discarded — not needed for heading
+    Wire.read(); Wire.read();
 
     hdg_deg = atan2f((float)y, (float)x) * 57.295779f;
     if (hdg_deg < 0) hdg_deg += 360.0f;
@@ -133,7 +148,7 @@ void sensors_init() {
 
     // HMC5883L
     _mag_ok = _mag_init();
-    Serial.printf("[sensors] HMC5883L %s\n", _mag_ok ? "OK" : "NOT FOUND");
+    Serial.printf("[sensors] QMC5883L %s\n", _mag_ok ? "OK" : "NOT FOUND");
 
     // BMP280
     _bmp_ok = _bmp.begin(0x76);

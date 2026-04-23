@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <Wire.h>
 #include <driver/twai.h>
 #include <TinyGPS++.h>
 #include "can_ids.h"
@@ -178,6 +179,7 @@ void setup() {
 
     can_init();
     motion_init();
+
     sensors_init();
 
     _gps_serial.begin(GPS_BAUD, SERIAL_8N1, GPS_RX_PIN, GPS_TX_PIN);
