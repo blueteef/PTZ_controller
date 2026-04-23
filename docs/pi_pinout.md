@@ -1,28 +1,53 @@
 # Raspberry Pi 4 — GPIO Pin Assignments
 
-## 40-Pin Header
+## Visual Pin Map
+
+Board oriented with USB ports down, GPIO header at top-left.
+Pin 1 is the corner pin nearest the SD card slot (top-left of header).
 
 ```
-         3.3V  [ 1] [ 2]  5V
-    I2C   SDA  [ 3] [ 4]  5V
-    I2C   SCL  [ 5] [ 6]  GND
-         free  [ 7] [ 8]  GPIO14  UART TX (free)
-          GND  [ 9] [10]  GPIO15  UART RX (free)
-  RELAY GPIO17 [11] [12]  GPIO18  FAN MOSFET
-         free  [13] [14]  GND
-         free  [15] [16]  free
-         3.3V  [17] [18]  free
-    CAN  MOSI  [19] [20]  GND
-    CAN  MISO  [21] [22]  GPIO25  CAN INT
-    CAN   CLK  [23] [24]  GPIO8   CAN CS (CE0)
-          GND  [25] [26]  GPIO7   SPI CE1 (free)
-      EEPROM   [27] [28]  EEPROM
-         free  [29] [30]  GND
-         free  [31] [32]  free
-         free  [33] [34]  GND
-         free  [35] [36]  free
-         free  [37] [38]  free
-          GND  [39] [40]  free
+                    ┌─ SD card side
+                    │
+        ┌───────────┴───────────┐
+        │  ● ● ← pin 1 is here  │  <- top of header
+        │                       │
+        │   [GPIO HEADER]       │
+        │                       │
+        │         Pi 4          │
+        │                       │
+        │  [USB 2.0] [USB 3.0]  │
+        │  [USB 2.0] [USB 3.0]  │
+        └───────────────────────┘
+
+Pin 1 = top-left (odd pins on left, even on right going down)
+```
+
+```
+LEFT RAIL (odd)                        RIGHT RAIL (even)
+─────────────────────────────────────────────────────────
+  3.3V        ○ 1 │ 2 ○  5V
+  GPIO2  SDA  ○ 3 │ 4 ○  5V
+  GPIO3  SCL  ○ 5 │ 6 ○  GND
+  GPIO4       ○ 7 │ 8 ○  GPIO14  UART TX
+  GND         ○ 9 │10 ○  GPIO15  UART RX
+  GPIO17 ■ 11 │12 ■  GPIO18             ← RELAY(11)  FAN(12)
+  GPIO27      ○13 │14 ○  GND
+  GPIO22      ○15 │16 ○  GPIO23
+  3.3V        ○17 │18 ○  GPIO24
+  GPIO10 ■ 19 │20 ○  GND               ← CAN MOSI(19)
+  GPIO9  ■ 21 │22 ■  GPIO25            ← CAN MISO(21)  CAN INT(22)
+  GPIO11 ■ 23 │24 ■  GPIO8             ← CAN CLK(23)   CAN CS(24)
+  GND         ○25 │26 ○  GPIO7
+  GPIO0  ID   ○27 │28 ○  GPIO1  ID
+  GPIO5       ○29 │30 ○  GND
+  GPIO6       ○31 │32 ○  GPIO12
+  GPIO13      ○33 │34 ○  GND
+  GPIO19      ○35 │36 ○  GPIO16
+  GPIO26      ○37 │38 ○  GPIO20
+  GND         ○39 │40 ○  GPIO21
+
+  ○ = free / power / GND
+  ■ = in use
 ```
 
 ## Assigned Pins
