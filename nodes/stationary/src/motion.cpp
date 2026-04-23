@@ -1,220 +1,269 @@
 #include <Arduino.h>
 #include <SPI.h>
-#include <FastAccelStepper.h>
-#include <TMCStepper.h>
 #include "config.h"
 #include "motion.h"
 #include "can_ids.h"
 
 // ---------------------------------------------------------------------------
-// Constants
+// Encoder — MT6816, 14-bit absolute on output shaft
+// SPI Mode 1, CS active-low
 // ---------------------------------------------------------------------------
+static constexpr float CDEG_PER_COUNT = 36000.0f / 16384.0f;   // ~2.197 cdeg/count
 
-// Steps per degree at output shaft = (steps/rev_motor * microsteps) / (gear_ratio * 360)
-// NEMA17 = 200 steps/rev, 16 microsteps, 26:1 gearbox
-// → 200 * 16 / (26 * 360) = 3200 / 9360 ≈ 0.342 steps/degree
-// Inverted: degrees/step = 9360 / 3200 = 2.925 deg/step
-// Centidegrees per step = 292.5
-static constexpr float STEPS_PER_CDEG  = (200.0f * 16.0f) / (26.0f * 36000.0f);
-static constexpr float CDEG_PER_STEP   = 1.0f / STEPS_PER_CDEG;
-
-// Encoder: 14-bit absolute on output shaft
-static constexpr float CDEG_PER_ENC_COUNT = 36000.0f / 16384.0f;  // ~2.197 cdeg/count
-
-// Motion defaults (overridden by MSG_SETTINGS)
-static uint16_t _max_speed_cdeg_s = 4500;   // 45 deg/s
-static uint16_t _accel_cdeg_s2    = 12000;  // 120 deg/s²
-
-// ---------------------------------------------------------------------------
-// Stepper
-// ---------------------------------------------------------------------------
-static FastAccelStepperEngine _engine;
-static FastAccelStepper       *_stepper = nullptr;
-static HardwareSerial          _tmc_serial(2);   // SERIAL2
-static TMC2209Stepper           _driver(&_tmc_serial, 0.11f, TMC_ADDR);
-
-// ---------------------------------------------------------------------------
-// Encoder
-// ---------------------------------------------------------------------------
 static SPIClass _enc_spi(VSPI);
 
 static uint16_t _enc_read_raw() {
     uint8_t hi, lo;
     digitalWrite(ENC_CS_PIN, LOW);
     delayMicroseconds(1);
-    hi = _enc_spi.transfer(0x83);   // read angle register
+    hi = _enc_spi.transfer(0x83);
     lo = _enc_spi.transfer(0x00);
     delayMicroseconds(1);
     digitalWrite(ENC_CS_PIN, HIGH);
-    return (((uint16_t)hi << 8) | lo) >> 2;   // 14-bit angle
+    return (((uint16_t)hi << 8) | lo) >> 2;   // 14-bit angle (0–16383)
 }
 
-// Track encoder revolutions for multi-turn position
-static int32_t  _enc_turns      = 0;
-static uint16_t _enc_prev_raw   = 0;
-static int32_t  _enc_pos_cdeg   = 0;   // absolute position in centidegrees
-static int32_t  _home_offset_cdeg = 0; // subtracted from enc_pos to give output position
+static int32_t  _enc_turns    = 0;
+static uint16_t _enc_prev_raw = 0;
+static int32_t  _enc_abs_cdeg = 0;    // absolute multi-turn centidegrees
+static int32_t  _home_offset  = 0;    // zero reference
 
 static void _enc_update() {
-    uint16_t raw = _enc_read_raw();
+    uint16_t raw   = _enc_read_raw();
     int16_t  delta = (int16_t)(raw - _enc_prev_raw);
-
-    // Unwrap: if delta jumps more than half-revolution, it crossed zero
     if (delta >  8192) _enc_turns--;
     if (delta < -8192) _enc_turns++;
-
     _enc_prev_raw  = raw;
-    _enc_pos_cdeg  = (int32_t)((_enc_turns * 16384 + raw) * CDEG_PER_ENC_COUNT);
+    _enc_abs_cdeg  = (int32_t)((_enc_turns * 16384 + (int32_t)raw) * CDEG_PER_COUNT);
+}
+
+// ---------------------------------------------------------------------------
+// BTS7960 H-bridge
+// ---------------------------------------------------------------------------
+static void _pwm_init() {
+    ledcSetup(0, MOTOR_PWM_FREQ, MOTOR_PWM_BITS);   // channel 0 = RPWM
+    ledcSetup(1, MOTOR_PWM_FREQ, MOTOR_PWM_BITS);   // channel 1 = LPWM
+    ledcAttachPin(MOTOR_RPWM_PIN, 0);
+    ledcAttachPin(MOTOR_LPWM_PIN, 1);
+
+    pinMode(MOTOR_REN_PIN, OUTPUT);
+    pinMode(MOTOR_LEN_PIN, OUTPUT);
+    digitalWrite(MOTOR_REN_PIN, HIGH);
+    digitalWrite(MOTOR_LEN_PIN, HIGH);
+
+    ledcWrite(0, 0);
+    ledcWrite(1, 0);
+}
+
+// duty: -255 (full reverse) to +255 (full forward), 0 = coast
+static void _motor_set(int16_t duty) {
+    if (duty >= 0) {
+        ledcWrite(0, (uint8_t)min((int16_t)255, duty));
+        ledcWrite(1, 0);
+    } else {
+        ledcWrite(0, 0);
+        ledcWrite(1, (uint8_t)min((int16_t)255, (int16_t)-duty));
+    }
+}
+
+static void _motor_brake() {
+    ledcWrite(0, 0);
+    ledcWrite(1, 0);
+    digitalWrite(MOTOR_REN_PIN, LOW);
+    digitalWrite(MOTOR_LEN_PIN, LOW);
+}
+
+static void _motor_enable() {
+    digitalWrite(MOTOR_REN_PIN, HIGH);
+    digitalWrite(MOTOR_LEN_PIN, HIGH);
+}
+
+// ---------------------------------------------------------------------------
+// PID
+// ---------------------------------------------------------------------------
+struct PID {
+    float kp, ki, kd;
+    float integral   = 0;
+    float prev_error = 0;
+    float limit;
+
+    float compute(float error, float dt) {
+        if (dt <= 0 || dt > 0.5f) return 0;
+        integral  += error * dt;
+        integral   = constrain(integral, -limit / max(ki, 0.001f),
+                                          limit / max(ki, 0.001f));
+        float deriv = (error - prev_error) / dt;
+        prev_error  = error;
+        return constrain(kp * error + ki * integral + kd * deriv, -limit, limit);
+    }
+
+    void reset() { integral = 0; prev_error = 0; }
+};
+
+// Position PID: error in cdeg, output = motor duty (-255..+255)
+static PID _pos_pid = { .kp = 0.8f, .ki = 0.05f, .kd = 0.3f, .limit = 255.0f };
+
+// Velocity PID: error in cdeg/s, output = motor duty
+static PID _vel_pid = { .kp = 1.2f, .ki = 0.1f,  .kd = 0.05f, .limit = 255.0f };
+
+// ---------------------------------------------------------------------------
+// Velocity measurement (differentiated encoder, low-pass filtered)
+// ---------------------------------------------------------------------------
+static float   _vel_cdeg_s    = 0.0f;
+static int32_t _prev_pos_cdeg = 0;
+static uint32_t _prev_tick_us = 0;
+static constexpr float VEL_LPF_ALPHA = 0.25f;   // heavier filter = smoother but laggier
+
+static void _vel_update() {
+    uint32_t now_us = micros();
+    float dt = (now_us - _prev_tick_us) * 1e-6f;
+    if (dt < 0.002f) return;   // max 500Hz update
+
+    int32_t pos = _enc_abs_cdeg - _home_offset;
+    float raw_vel = (float)(pos - _prev_pos_cdeg) / dt;
+    _vel_cdeg_s  = VEL_LPF_ALPHA * raw_vel + (1.0f - VEL_LPF_ALPHA) * _vel_cdeg_s;
+
+    _prev_pos_cdeg = pos;
+    _prev_tick_us  = now_us;
 }
 
 // ---------------------------------------------------------------------------
 // State
 // ---------------------------------------------------------------------------
-enum class MotionMode : uint8_t { IDLE, VELOCITY, POSITION, HOMING };
-static MotionMode _mode    = MotionMode::IDLE;
-static int32_t    _target_cdeg = 0;
-static int16_t    _last_vel_cdeg_s = 0;
-static bool       _homed   = false;
-static bool       _fault   = false;
+enum class MotionMode : uint8_t { IDLE, VELOCITY, POSITION };
+static MotionMode _mode          = MotionMode::IDLE;
+static int16_t    _cmd_vel       = 0;     // cdeg/s (velocity mode)
+static int32_t    _target_cdeg   = 0;     // target position (position mode)
+static bool       _homed         = false;
+static bool       _fault         = false;
+static bool       _enabled       = false;
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-static int32_t _cdeg_to_steps(int32_t cdeg) {
-    return (int32_t)((float)cdeg * STEPS_PER_CDEG);
-}
-
-static void _apply_settings() {
-    if (!_stepper) return;
-    uint32_t steps_per_s  = (uint32_t)((float)_max_speed_cdeg_s  * STEPS_PER_CDEG);
-    uint32_t steps_per_s2 = (uint32_t)((float)_accel_cdeg_s2     * STEPS_PER_CDEG);
-    _stepper->setSpeedInHz(max(steps_per_s, (uint32_t)1));
-    _stepper->setAcceleration(max(steps_per_s2, (uint32_t)1));
-}
+// Settings (updated by MSG_SETTINGS)
+static float _max_speed_cdeg_s = 4500.0f;  // 45 deg/s
 
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
 void motion_init() {
-    // TMC2209 UART
-    _tmc_serial.begin(TMC_UART_BAUD, SERIAL_8N1, TMC_UART_RX, TMC_UART_TX);
-    delay(100);
-    _driver.begin();
-    _driver.toff(5);
-    _driver.rms_current(800);        // mA — tune for your motor
-    _driver.microsteps(16);
-    _driver.en_spreadCycle(false);   // StealthChop
-    _driver.pwm_autoscale(true);
-
-    // Stepper
-    _engine.init();
-    pinMode(EN_PIN, OUTPUT);
-    digitalWrite(EN_PIN, LOW);       // enable driver (active low)
-    _stepper = _engine.stepperConnectToPin(STEP_PIN);
-    if (_stepper) {
-        _stepper->setDirectionPin(DIR_PIN);
-        _stepper->setEnablePin(EN_PIN);
-        _stepper->setAutoEnable(true);
-        _apply_settings();
-    }
-
     // Encoder SPI
     _enc_spi.begin(ENC_SCK_PIN, ENC_MISO_PIN, ENC_MOSI_PIN, -1);
-    _enc_spi.setFrequency(1000000);  // 1 MHz — conservative start
+    _enc_spi.setFrequency(1000000);
     _enc_spi.setDataMode(SPI_MODE1);
     pinMode(ENC_CS_PIN, OUTPUT);
     digitalWrite(ENC_CS_PIN, HIGH);
     delay(10);
 
-    // Initial encoder read
     _enc_prev_raw = _enc_read_raw();
-    _enc_pos_cdeg = (int32_t)(_enc_prev_raw * CDEG_PER_ENC_COUNT);
-    _home_offset_cdeg = _enc_pos_cdeg;   // treat startup position as home
+    _enc_abs_cdeg = (int32_t)(_enc_prev_raw * CDEG_PER_COUNT);
+    _home_offset  = _enc_abs_cdeg;   // startup position = home
+    _prev_pos_cdeg = 0;
+    _prev_tick_us  = micros();
     _homed = true;
+
+    // Motor
+    _pwm_init();
+    _enabled = true;
 }
 
 void motion_tick() {
     _enc_update();
+    _vel_update();
 
-    if (_mode == MotionMode::POSITION && _stepper) {
-        // Simple position mode — drive to target via encoder feedback
-        int32_t rel_pos = _enc_pos_cdeg - _home_offset_cdeg;
-        int32_t error   = _target_cdeg - rel_pos;
-        if (abs(error) < 10) {  // within 0.1° — stop
-            _stepper->stopMove();
+    if (!_enabled || _fault) return;
+
+    int16_t duty = 0;
+
+    if (_mode == MotionMode::VELOCITY) {
+        float dt = 0.01f;   // nominal; vel_update handles actual timing
+        float error = (float)_cmd_vel - _vel_cdeg_s;
+        duty = (int16_t)_vel_pid.compute(error, dt);
+
+        // Stop cleanly at zero command
+        if (_cmd_vel == 0 && fabsf(_vel_cdeg_s) < 50.0f) {
+            _motor_set(0);
             _mode = MotionMode::IDLE;
-        } else {
-            int32_t target_steps = _cdeg_to_steps(_target_cdeg + _home_offset_cdeg);
-            _stepper->moveTo(target_steps);
+            return;
         }
-    }
-}
 
-void motion_set_velocity(int16_t vel_cdeg_s) {
-    if (!_stepper || _fault) return;
-    _last_vel_cdeg_s = vel_cdeg_s;
-    _mode = MotionMode::VELOCITY;
+    } else if (_mode == MotionMode::POSITION) {
+        float dt = 0.01f;
+        float error = (float)(_target_cdeg - motion_get_pos_cdeg());
+        duty = (int16_t)_pos_pid.compute(error, dt);
 
-    if (vel_cdeg_s == 0) {
-        _stepper->stopMove();
-        _mode = MotionMode::IDLE;
+        if (fabsf(error) < 10.0f) {   // within 0.1°
+            _motor_set(0);
+            _mode = MotionMode::IDLE;
+            _pos_pid.reset();
+            return;
+        }
+
+    } else {
         return;
     }
 
-    uint32_t speed_steps = (uint32_t)(abs(vel_cdeg_s) * STEPS_PER_CDEG);
-    speed_steps = max(speed_steps, (uint32_t)1);
-    _stepper->setSpeedInHz(speed_steps);
+    _motor_set(duty);
+}
 
-    if (vel_cdeg_s > 0)
-        _stepper->runForward();
-    else
-        _stepper->runBackward();
+void motion_set_velocity(int16_t vel_cdeg_s) {
+    if (_fault) return;
+    _cmd_vel = (int16_t)constrain((float)vel_cdeg_s, -_max_speed_cdeg_s, _max_speed_cdeg_s);
+    _vel_pid.reset();
+    _motor_enable();
+    _enabled = true;
+    _mode = (_cmd_vel != 0) ? MotionMode::VELOCITY : MotionMode::IDLE;
+    if (_cmd_vel == 0) _motor_set(0);
 }
 
 void motion_set_position(int32_t pos_cdeg) {
-    if (!_stepper || _fault) return;
+    if (_fault) return;
     _target_cdeg = pos_cdeg;
+    _pos_pid.reset();
+    _motor_enable();
+    _enabled = true;
     _mode = MotionMode::POSITION;
-    _apply_settings();
 }
 
 void motion_stop() {
-    if (_stepper) _stepper->stopMove();
-    _mode = MotionMode::IDLE;
-    _last_vel_cdeg_s = 0;
+    _mode    = MotionMode::IDLE;
+    _cmd_vel = 0;
+    _motor_set(0);
+    _vel_pid.reset();
+    _pos_pid.reset();
 }
 
 void motion_estop() {
-    if (_stepper) _stepper->forceStop();
-    _mode = MotionMode::IDLE;
-    _last_vel_cdeg_s = 0;
+    _mode    = MotionMode::IDLE;
+    _cmd_vel = 0;
+    _motor_brake();
+    _vel_pid.reset();
+    _pos_pid.reset();
 }
 
 void motion_home() {
-    _home_offset_cdeg = _enc_pos_cdeg;
-    _homed = true;
     motion_stop();
+    _home_offset   = _enc_abs_cdeg;
+    _prev_pos_cdeg = 0;
+    _homed = true;
 }
 
-void motion_set_settings(uint16_t max_speed_cdeg_s, uint16_t accel_cdeg_s2) {
-    _max_speed_cdeg_s = max_speed_cdeg_s;
-    _accel_cdeg_s2    = accel_cdeg_s2;
-    _apply_settings();
+void motion_set_settings(uint16_t max_speed_cdeg_s, uint16_t /*accel_cdeg_s2*/) {
+    // accel is handled implicitly by PID rate limiting — ignore for now
+    _max_speed_cdeg_s = (float)max_speed_cdeg_s;
 }
 
 int32_t motion_get_pos_cdeg() {
-    return _enc_pos_cdeg - _home_offset_cdeg;
+    return _enc_abs_cdeg - _home_offset;
 }
 
 int16_t motion_get_vel_cdeg_s() {
-    return _last_vel_cdeg_s;
+    return (int16_t)_vel_cdeg_s;
 }
 
 uint8_t motion_get_flags() {
     uint8_t f = 0;
-    if (_stepper && _stepper->isRunning()) f |= POS_FLAG_MOVING;
-    if (_fault)                            f |= POS_FLAG_FAULT;
-    if (_homed)                            f |= POS_FLAG_HOMED;
+    if (_mode != MotionMode::IDLE)  f |= POS_FLAG_MOVING;
+    if (_fault)                     f |= POS_FLAG_FAULT;
+    if (_homed)                     f |= POS_FLAG_HOMED;
     return f;
 }

@@ -20,17 +20,18 @@
 #define CAN_RX_PIN      4
 
 // ---------------------------------------------------------------------------
-// Stepper — TMC2209 (single axis)
+// Pan motor — BTS7960 H-bridge (brushed DC gearmotor)
+// Drivetrain: 56:1 internal gearbox × 100t/16t external = 350:1 total
+// Encoder on OUTPUT shaft — position is direct, no gear ratio needed in math.
+// R_IS / L_IS (current sense) not connected.
 // ---------------------------------------------------------------------------
-#define STEP_PIN        27
-#define DIR_PIN         26
-#define EN_PIN          14
+#define MOTOR_RPWM_PIN  27      // forward PWM
+#define MOTOR_LPWM_PIN  26      // reverse PWM
+#define MOTOR_REN_PIN   14      // right bridge enable (active high)
+#define MOTOR_LEN_PIN   17      // left  bridge enable (active high)
 
-// TMC2209 single-wire UART (SERIAL2 on ESP32)
-#define TMC_UART_TX     17
-#define TMC_UART_RX     16
-#define TMC_UART_BAUD   115200
-#define TMC_ADDR        0   // MS1=GND → address 0
+#define MOTOR_PWM_FREQ  10000   // Hz — above audible range
+#define MOTOR_PWM_BITS  8       // 0–255 resolution
 
 // ---------------------------------------------------------------------------
 // SPI magnetic encoder (AS5047P or compatible)
