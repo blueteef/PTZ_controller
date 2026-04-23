@@ -83,8 +83,8 @@ static void _motor_enable() {
 // ---------------------------------------------------------------------------
 struct PID {
     float kp, ki, kd;
-    float integral   = 0;
-    float prev_error = 0;
+    float integral;
+    float prev_error;
     float limit;
 
     float compute(float error, float dt) {
@@ -100,11 +100,9 @@ struct PID {
     void reset() { integral = 0; prev_error = 0; }
 };
 
-// Position PID: error in cdeg, output = motor duty (-255..+255)
-static PID _pos_pid = { .kp = 0.8f, .ki = 0.05f, .kd = 0.3f, .limit = 255.0f };
-
-// Velocity PID: error in cdeg/s, output = motor duty
-static PID _vel_pid = { .kp = 1.2f, .ki = 0.1f,  .kd = 0.05f, .limit = 255.0f };
+// kp, ki, kd, integral, prev_error, limit
+static PID _pos_pid = { 0.8f,  0.05f, 0.3f,  0.0f, 0.0f, 255.0f };
+static PID _vel_pid = { 1.2f,  0.1f,  0.05f, 0.0f, 0.0f, 255.0f };
 
 // ---------------------------------------------------------------------------
 // Velocity measurement (differentiated encoder, low-pass filtered)
