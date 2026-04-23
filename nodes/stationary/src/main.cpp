@@ -218,4 +218,5 @@ void loop() {
     if (now - t_env >= INTERVAL_ENV)        { t_env = now; send_env(); }
     if (now - t_gps >= INTERVAL_GPS)        { t_gps = now; send_gps(); }
     if (now - t_hb  >= INTERVAL_HEARTBEAT)  { t_hb  = now; send_heartbeat(); }
+
 }
