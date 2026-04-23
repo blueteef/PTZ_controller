@@ -55,7 +55,7 @@
 // ---------------------------------------------------------------------------
 #define GPS_RX_PIN      13  // ESP32 RX ← GPS TX
 #define GPS_TX_PIN      12  // ESP32 TX → GPS RX (optional)
-#define GPS_BAUD        9600
+#define GPS_BAUD        115200
 
 // ---------------------------------------------------------------------------
 // Sensor I2C addresses (informational)

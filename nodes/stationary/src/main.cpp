@@ -182,7 +182,24 @@ void setup() {
 
     sensors_init();
 
+    // Init GPS — send config at all common baud rates to ensure it takes,
+    // then reopen at target baud. CASIC protocol for ATGM336H.
+    const uint32_t try_bauds[] = { 9600, 38400, 57600, 4800 };
+    for (uint32_t baud : try_bauds) {
+        _gps_serial.begin(baud, SERIAL_8N1, GPS_RX_PIN, GPS_TX_PIN);
+        delay(100);
+        // Set baud to 115200
+        _gps_serial.print("$PCAS01,5*19\r\n");
+        delay(100);
+        _gps_serial.end();
+    }
+    // Now open at target baud
     _gps_serial.begin(GPS_BAUD, SERIAL_8N1, GPS_RX_PIN, GPS_TX_PIN);
+    delay(200);
+    // Set update rate to 10Hz (100ms interval)
+    _gps_serial.print("$PCAS02,100*1E\r\n");
+    delay(100);
+    Serial.println("[GPS] configured: 115200 baud, 10Hz");
 
     _last_pi_heartbeat_ms = millis();   // grace period on boot
     Serial.println("[stationary] ready");
