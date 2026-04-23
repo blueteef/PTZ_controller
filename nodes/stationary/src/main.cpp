@@ -164,12 +164,6 @@ static void handle_can_rx() {
                 break;
             }
 
-            case MSG_RELAY_CMD: {
-                FrameRelayCmd *f = (FrameRelayCmd *)msg.data;
-                if (f->relay_id == 0)
-                    digitalWrite(RELAY_PIN, f->state ? HIGH : LOW);
-                break;
-            }
         }
     }
 }
@@ -181,10 +175,6 @@ static void handle_can_rx() {
 void setup() {
     Serial.begin(115200);
     Serial.println("[stationary] booting...");
-
-    // Relay — default OFF at boot, Pi enables when ready
-    pinMode(RELAY_PIN, OUTPUT);
-    digitalWrite(RELAY_PIN, LOW);
 
     can_init();
     motion_init();

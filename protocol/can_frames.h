@@ -92,12 +92,6 @@ typedef struct {
     uint16_t press_hPa;         // hectopascals
 } FrameEnv;
 
-// MSG_RELAY_CMD — 2 bytes
-typedef struct {
-    uint8_t relay_id;   // 0 = main power relay
-    uint8_t state;      // 1 = on, 0 = off
-} FrameRelayCmd;
-
 // MSG_FAULT — 2 bytes
 typedef struct {
     uint8_t  node_id;

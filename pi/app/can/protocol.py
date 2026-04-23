@@ -32,8 +32,7 @@ NODE_PI         = 0x7   # Pi (brain) — used as source ID on outbound frames
 # ---------------------------------------------------------------------------
 # Message types  (8-bit field, shifted << 3 in CAN ID)
 # ---------------------------------------------------------------------------
-MSG_HEARTBEAT    = 0x00
-MSG_RELAY_CMD    = 0x07  # relay control — u8 relay_id, u8 state  # periodic alive ping
+MSG_HEARTBEAT    = 0x00  # periodic alive ping
 MSG_ESTOP        = 0x01  # emergency stop — zero payload, highest priority
 MSG_STOP         = 0x02  # controlled stop  — u8 axis
 MSG_VEL_CMD      = 0x03  # velocity command  — u8 axis, i16 vel_cdeg_s
@@ -109,13 +108,6 @@ def build_settings(max_speed_cdeg_s: int, accel_cdeg_s2: int) -> can.Message:
     return can.Message(
         arbitration_id=can_id(NODE_PI, MSG_SETTINGS),
         data=struct.pack("<HH", max_speed_cdeg_s, accel_cdeg_s2),
-        is_extended_id=False,
-    )
-
-def build_relay_cmd(relay_id: int, state: bool) -> can.Message:
-    return can.Message(
-        arbitration_id=can_id(NODE_PI, MSG_RELAY_CMD),
-        data=struct.pack("<BB", relay_id, 1 if state else 0),
         is_extended_id=False,
     )
 
