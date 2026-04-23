@@ -1,36 +1,52 @@
 """
-CAN bus bridge — replaces serial_bridge for v2 hardware.
-Uses python-can against socketcan (can0 via MCP2515 or equivalent).
+bridge.py — CAN bus bridge (replaces serial_bridge for v2 hardware).
+
+Uses python-can against SocketCAN (can0 via MCP2515).
+Runs one RX thread and sends heartbeats on a fixed interval.
 """
+
+from __future__ import annotations
+
 import logging
 import threading
+import time
+
 import can
-from app.can.protocol import (
-    build_vel_cmd, build_pos_cmd, build_estop,
-    parse_frame, NODE_PI,
-)
-from app.config import CAN_CHANNEL, CAN_BITRATE
+
+from app import config
+from app.can.protocol import parse_frame, build_heartbeat, build_estop
+from app.state import state
 
 log = logging.getLogger(__name__)
 
-_bus: can.BusABC | None = None
+_HEARTBEAT_INTERVAL = 1.0   # seconds between Pi heartbeat frames
+
+_bus:       can.BusABC | None = None
 _rx_thread: threading.Thread | None = None
-_running = False
+_hb_thread: threading.Thread | None = None
+_running    = False
+_lock       = threading.Lock()
 
 
-def start():
-    global _bus, _rx_thread, _running
+def start() -> None:
+    global _bus, _rx_thread, _hb_thread, _running
     try:
-        _bus = can.interface.Bus(channel=CAN_CHANNEL, bustype="socketcan", bitrate=CAN_BITRATE)
+        _bus = can.interface.Bus(
+            channel=config.CAN_CHANNEL,
+            bustype="socketcan",
+            bitrate=config.CAN_BITRATE,
+        )
         _running = True
         _rx_thread = threading.Thread(target=_rx_loop, daemon=True, name="can-rx")
+        _hb_thread = threading.Thread(target=_hb_loop, daemon=True, name="can-heartbeat")
         _rx_thread.start()
-        log.info("CAN bridge started on %s @ %d bps", CAN_CHANNEL, CAN_BITRATE)
-    except Exception as e:
-        log.error("CAN bridge failed to start: %s", e)
+        _hb_thread.start()
+        log.info("CAN bridge started on %s @ %d bps", config.CAN_CHANNEL, config.CAN_BITRATE)
+    except Exception as exc:
+        log.error("CAN bridge failed to start: %s", exc)
 
 
-def stop():
+def stop() -> None:
     global _running, _bus
     _running = False
     if _bus:
@@ -39,33 +55,53 @@ def stop():
     log.info("CAN bridge stopped")
 
 
-def send_vel(axis: int, vel_cdeg_s: int):
-    _send(build_vel_cmd(axis, vel_cdeg_s))
+# ---------------------------------------------------------------------------
+# Public send helpers
+# ---------------------------------------------------------------------------
+
+def send(msg: can.Message) -> None:
+    """Send a pre-built CAN message."""
+    with _lock:
+        if _bus is None:
+            return
+        try:
+            _bus.send(msg)
+        except can.CanError as exc:
+            log.warning("CAN send error: %s", exc)
 
 
-def send_pos(axis: int, pos_cdeg: int):
-    _send(build_pos_cmd(axis, pos_cdeg))
+def send_estop() -> None:
+    send(build_estop())
 
 
-def send_estop():
-    _send(build_estop())
+# ---------------------------------------------------------------------------
+# Internal loops
+# ---------------------------------------------------------------------------
 
-
-def _send(msg: can.Message):
-    if _bus is None:
-        return
-    try:
-        _bus.send(msg)
-    except can.CanError as e:
-        log.warning("CAN send error: %s", e)
-
-
-def _rx_loop():
+def _rx_loop() -> None:
     while _running and _bus:
         try:
             msg = _bus.recv(timeout=1.0)
             if msg:
+                state.serial_connected = True
                 parse_frame(msg)
-        except Exception as e:
+        except Exception as exc:
             if _running:
-                log.warning("CAN rx error: %s", e)
+                log.warning("CAN rx error: %s", exc)
+
+
+def _hb_loop() -> None:
+    while _running:
+        send(build_heartbeat())
+        time.sleep(_HEARTBEAT_INTERVAL)
+
+
+# ---------------------------------------------------------------------------
+# Module-level singleton
+# ---------------------------------------------------------------------------
+
+can_bridge = type("CANBridge", (), {
+    "start": staticmethod(start),
+    "stop":  staticmethod(stop),
+    "send":  staticmethod(send),
+})()

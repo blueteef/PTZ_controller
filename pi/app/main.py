@@ -30,6 +30,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 from app.serial_bridge.bridge import bridge
+from app.can.bridge import start as can_start, stop as can_stop
 from app.imu.reader import imu_reader
 from app.camera.capture import camera
 from app.camera.thermal import thermal_camera
@@ -61,6 +62,7 @@ async def lifespan(app: FastAPI):
 
     db.init_db()
     bridge.start()
+    can_start()
     imu_reader.start()
     camera.start()
     thermal_camera.start()
@@ -84,6 +86,7 @@ async def lifespan(app: FastAPI):
     webcam.stop()
     ups_reader.stop()
     imu_reader.stop()
+    can_stop()
     bridge.stop()
     log.info("Shutdown complete")
 
