@@ -152,12 +152,24 @@ void motion_init() {
     digitalWrite(ENC_CS_PIN, HIGH);
     delay(10);
 
-    _enc_prev_raw = _enc_read_raw();
-    _enc_abs_cdeg = (int32_t)(_enc_prev_raw * CDEG_PER_COUNT);
-    _home_offset  = _enc_abs_cdeg;   // startup position = home
+    // Validate encoder — two consecutive reads must agree within 1°
+    uint16_t r1 = _enc_read_raw();
+    delay(2);
+    uint16_t r2 = _enc_read_raw();
+    int16_t  diff = (int16_t)(r1 - r2);
+    if (abs(diff) > 45) {   // >1° disagreement = encoder not connected
+        Serial.println("[motion] ERROR: encoder not detected — motor disabled");
+        _fault = true;
+        return;
+    }
+
+    _enc_prev_raw  = r2;
+    _enc_abs_cdeg  = (int32_t)(_enc_prev_raw * CDEG_PER_COUNT);
+    _home_offset   = _enc_abs_cdeg;
     _prev_pos_cdeg = 0;
     _prev_tick_us  = micros();
     _homed = true;
+    Serial.println("[motion] encoder OK");
 
     // Motor
     _pwm_init();
