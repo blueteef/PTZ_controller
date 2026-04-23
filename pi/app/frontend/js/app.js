@@ -67,6 +67,7 @@ function handleMessage(msg) {
       if (msg.mag?.ok) _lastMagHdg = msg.mag.hdg;
       updateHUDData(msg.imu ?? null, msg.mag ?? null);
       updateTelemetryHUD(msg.pan, msg.tilt, msg.power ?? null, msg.env ?? null, msg.gps ?? null);
+      updateUPSStatus(msg.ups ?? null);
       syncStabCheckboxes(msg);
       break;
     case "detections":
@@ -102,6 +103,17 @@ function setTrackingStatus(active) {
 
 // Last known compass heading, kept in sync by updateHUDData via telemetry
 let _lastMagHdg = null;
+
+function updateUPSStatus(ups) {
+  const el = document.getElementById("ups-badge");
+  if (!el) return;
+  if (!ups) { el.style.display = "none"; return; }
+  el.style.display = "";
+  const pct = ups.pct ?? "?";
+  const charging = ups.vin_ok ? "⚡" : "🔋";
+  el.textContent = `${charging} ${pct}%`;
+  el.className = "badge " + (pct <= 10 ? "bad" : pct <= 30 ? "warn" : "ok");
+}
 
 function setPosition(pan, tilt) {
   document.getElementById("pos-display").textContent =

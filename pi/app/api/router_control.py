@@ -85,6 +85,7 @@ async def _telemetry_loop(ws: WebSocket) -> None:
                 sensor_gps=state.sensor_gps or None,
                 sensor_imu=state.sensor_imu or None,
                 sensor_mag=state.sensor_mag or None,
+                sensor_ups=state.sensor_ups or None,
                 stab_roll=state.stab_roll_enabled,
                 stab_pitch=state.stab_pitch_enabled,
                 stab_heading=state.stab_heading_lock,

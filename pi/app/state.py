@@ -71,6 +71,9 @@ class AppState:
         # Serial bridge health
         self.serial_connected: bool = False
 
+        # UPS battery (MakerFocus UPSPack V3P via UART)
+        self.sensor_ups: dict = {}    # {"pct": 85, "vout_mv": 5000, "vin_ok": True}
+
         # Sensor telemetry pushed by ESP32 ($PWR / $ENV / $GPS / $IMU / $MAG lines)
         self.sensor_power: dict = {}  # {"vin": V, "curr": mA, "pwr": mW}
         self.sensor_env:   dict = {}  # {"temp": °C, "press": hPa, "alt": m}

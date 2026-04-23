@@ -34,6 +34,7 @@ header {
 }
 .badge.ok   { background: #1a4a1a; color: #4caf50; }
 .badge.bad  { background: #4a1a1a; color: #f44336; }
+.badge.warn { background: #4a3a00; color: #ffb300; }
 .badge.off  { background: #333; color: #888; }
 .badge.on   { background: #1a3a4a; color: #29b6f6; }
 

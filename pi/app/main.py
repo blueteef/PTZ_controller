@@ -34,6 +34,7 @@ from app.imu.reader import imu_reader
 from app.camera.capture import camera
 from app.camera.thermal import thermal_camera
 from app.camera.webcam import webcam
+from app.ups.reader import ups_reader
 from app.vision.pipeline import pipeline
 import app.vision.tracker as tracker_module
 from app.vision.tracker import GimbalTracker
@@ -64,6 +65,7 @@ async def lifespan(app: FastAPI):
     camera.start()
     thermal_camera.start()
     webcam.start()
+    ups_reader.start()
     pipeline.start()
 
     # Inject bridge into tracker
@@ -80,6 +82,7 @@ async def lifespan(app: FastAPI):
     camera.stop()
     thermal_camera.stop()
     webcam.stop()
+    ups_reader.stop()
     imu_reader.stop()
     bridge.stop()
     log.info("Shutdown complete")

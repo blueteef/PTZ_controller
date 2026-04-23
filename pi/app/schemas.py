@@ -67,6 +67,7 @@ def make_telemetry(pan: float, tilt: float,
                    sensor_gps:   dict = None,
                    sensor_imu:   dict = None,
                    sensor_mag:   dict = None,
+                   sensor_ups:   dict = None,
                    stab_roll:    bool = False,
                    stab_pitch:   bool = False,
                    stab_heading: bool = False) -> dict:
@@ -90,6 +91,8 @@ def make_telemetry(pan: float, tilt: float,
         msg["imu"] = sensor_imu
     if sensor_mag:
         msg["mag"] = sensor_mag
+    if sensor_ups:
+        msg["ups"] = sensor_ups
     return msg
 
 

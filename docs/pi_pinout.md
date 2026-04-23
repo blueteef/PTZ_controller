@@ -28,15 +28,15 @@ LEFT RAIL (odd)                        RIGHT RAIL (even)
   3.3V        ○ 1 │ 2 ○  5V
   GPIO2  SDA  ○ 3 │ 4 ○  5V
   GPIO3  SCL  ○ 5 │ 6 ○  GND
-  GPIO4       ○ 7 │ 8 ○  GPIO14  UART TX
-  GND         ○ 9 │10 ○  GPIO15  UART RX
-  GPIO17 ■ 11 │12 ■  GPIO18             ← RELAY(11)  FAN(12)
+  GPIO4  STA  ■  7 │ 8 ○  GPIO14  UART TX ← UPS STA(7)
+  GND         ○ 9 │10 ■  GPIO15  UART RX ← UPS RX(10)
+  GPIO17     ■ 11 │12 ■  GPIO18             ← RELAY(11)  FAN(12)
   GPIO27      ○13 │14 ○  GND
   GPIO22      ○15 │16 ○  GPIO23
   3.3V        ○17 │18 ○  GPIO24
-  GPIO10 ■ 19 │20 ○  GND               ← CAN MOSI(19)
-  GPIO9  ■ 21 │22 ■  GPIO25            ← CAN MISO(21)  CAN INT(22)
-  GPIO11 ■ 23 │24 ■  GPIO8             ← CAN CLK(23)   CAN CS(24)
+  GPIO10     ■ 19 │20 ○  GND               ← CAN MOSI(19)
+  GPIO9      ■ 21 │22 ■  GPIO25            ← CAN MISO(21)  CAN INT(22)
+  GPIO11     ■ 23 │24 ■  GPIO8             ← CAN CLK(23)   CAN CS(24)
   GND         ○25 │26 ○  GPIO7
   GPIO0  ID   ○27 │28 ○  GPIO1  ID
   GPIO5       ○29 │30 ○  GND
@@ -57,7 +57,10 @@ LEFT RAIL (odd)                        RIGHT RAIL (even)
 | 1           | —      | 3.3V power                      |                              |
 | 2 / 4       | —      | 5V power                        | UPS board VCC here           |
 | 3           | GPIO2  | I2C SDA                         | Tilt IMU (MPU-6050) + UPS    |
-| 5           | GPIO3  | I2C SCL                         | Tilt IMU (MPU-6050) + UPS    |
+| 5           | GPIO3  | I2C SCL                         | Tilt IMU (MPU-6050)          |
+| 7           | GPIO4  | UPS STA shutdown signal         | FALLING edge → graceful shutdown |
+| 8           | GPIO14 | UART TX → UPS RX                | /dev/ttyAMA0, 9600 8N1       |
+| 10          | GPIO15 | UART RX ← UPS TX                | /dev/ttyAMA0, 9600 8N1       |
 | 11          | GPIO17 | Main power relay                | High-active, gpio17ctl.sh    |
 | 12          | GPIO18 | Fan MOSFET                      | High-active, fan_control.py  |
 | 19          | GPIO10 | SPI0 MOSI → CAN MOSI (SI)       | MCP2515                      |
@@ -88,17 +91,21 @@ Oscillator: `oscillator=8000000` (8 MHz crystal) or `16000000` — check crystal
 
 ## UPS (MakerFocus UPSPack V3P)
 
-| Module Pin | Pi Pin | GPIO   |
-|------------|--------|--------|
-| 5V / VCC   | 2 or 4 | 5V     |
-| GND        | 6      | GND    |
-| SDA        | 3      | GPIO2  |
-| SCL        | 5      | GPIO3  |
+| Module Pin | Pi Pin | GPIO    | Notes                              |
+|------------|--------|---------|------------------------------------|
+| 5V / VCC   | 2 or 4 | 5V      | Do NOT connect if UPS powers Pi    |
+| GND        | 6      | GND     |                                    |
+| TX         | 10     | GPIO15  | UPS transmits → Pi receives        |
+| RX         | 8      | GPIO14  | Pi transmits → UPS receives        |
+| STA        | 7      | GPIO4   | Low-battery shutdown signal        |
 
-I2C address: TBD — run `sudo i2cdetect -y 1` to confirm (expected 0x17 or 0x18).
+Protocol: UART 9600 8N1 on `/dev/ttyAMA0`
+Stream format: `$ SmartUPS 3.2, Vin GOOD, BATCAP 85, Vout 5000 $`
+STA: normally HIGH, goes LOW when battery critically depleted → triggers `sudo shutdown -h now`
+
+Note: MakerFocus docs suggest STA → GPIO18, but GPIO18 is used for fan MOSFET here.
+Requires in `/boot/firmware/config.txt`: `enable_uart=1` and `dtoverlay=disable-bt`
 
 ## Free GPIOs (available for future use)
 
-GPIO 4, 5, 6, 7, 12, 13, 14, 15, 16, 19, 20, 21, 22, 23, 24, 26, 27
-
-GPIO 14/15 are UART TX/RX — available if serial bridge to ESP32 is not in use.
+GPIO 5, 6, 7, 12, 13, 16, 19, 20, 21, 22, 23, 24, 26, 27

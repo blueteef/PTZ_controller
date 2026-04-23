@@ -99,6 +99,17 @@ MJPEG_QUALITY      = int(os.getenv("MJPEG_QUALITY", "75"))
 MJPEG_TARGET_FPS   = CAMERA_FPS   # stream pacing
 
 # ---------------------------------------------------------------------------
+# UPS (MakerFocus UPSPack V3P — UART stream + STA shutdown pin)
+# ---------------------------------------------------------------------------
+# Requires in /boot/firmware/config.txt:
+#   enable_uart=1
+#   dtoverlay=disable-bt
+# UPS_PORT: serial device (default /dev/ttyAMA0), or "none" to disable
+# UPS_STA_GPIO: BCM GPIO for the STA shutdown signal pin (default 4 = physical pin 7)
+UPS_PORT     = os.getenv("UPS_PORT",     "/dev/ttyAMA0")
+UPS_STA_GPIO = int(os.getenv("UPS_STA_GPIO", "4"))
+
+# ---------------------------------------------------------------------------
 # Webcam (secondary visible camera — USB UVC, not the TC001 thermal)
 # ---------------------------------------------------------------------------
 # WEBCAM_DEVICE: "auto" = scan /dev/video0–19, skip TC001 and Pi camera devices
