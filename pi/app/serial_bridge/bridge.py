@@ -67,6 +67,9 @@ class ESPBridge:
     # ------------------------------------------------------------------
 
     def start(self) -> None:
+        if config.SERIAL_PORT.lower() == "none":
+            log.info("ESPBridge disabled (SERIAL_PORT=none) — CAN bus mode")
+            return
         self._stop_event.clear()
         self._writer_thread.start()
         log.info("ESPBridge started on %s @ %d baud", config.SERIAL_PORT, config.SERIAL_BAUD)
