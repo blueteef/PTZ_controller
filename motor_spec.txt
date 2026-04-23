@@ -1,0 +1,19 @@
+Pan:
+  Motor:     JGB37-520 66RPM 24V with encoder
+  Drive:     16T pinion → 100T internal ring gear
+  Ratio:     6.25:1 external
+  Output:    ~10.5 RPM = 63°/sec ✓
+  Torque:    11.25 kg.cm at axis ✓
+
+Tilt:
+  Motor:     JGB37-520 12RPM 24V with encoder
+  Drive:     Direct couple to stub shaft
+  Output:    12 RPM = 72°/sec ✓
+  Torque:    16 kg.cm at axis ✓
+
+Control:
+  H-bridge:  BTS7960 × 2
+  MCU:       ESP32 TWAI CAN nodes
+  Gyro:      MPU6050 per axis
+  Encoder:   Motor integrated
+  Brain:     Raspberry Pi
