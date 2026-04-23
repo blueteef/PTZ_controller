@@ -87,7 +87,26 @@ export function updateHUDData(imu, mag) {
 }
 
 export function updateTelemetryHUD(pan, tilt, power, env, gps) {
-  _telData = { pan, tilt, power, env, gps };
+  // Normalise raw metric values from backend into display-ready fields
+  const p = power ? {
+    ...power,
+    ok: power.vin != null && power.vin > 0,
+  } : null;
+
+  const e = env ? {
+    ...env,
+    temp_f:     env.temp  * 9/5 + 32,
+    press_inhg: env.press * 0.02953,
+    // Altitude from pressure using barometric formula (assumes sea-level = 1013.25 hPa)
+    alt_ft:     (1 - Math.pow(env.press / 1013.25, 0.190284)) * 145366.45,
+  } : null;
+
+  const g = gps ? {
+    ...gps,
+    spd_mph: (gps.spd ?? 0) * 0.02237,   // cm/s → mph
+  } : null;
+
+  _telData = { pan, tilt, power: p, env: e, gps: g };
   if (_hudEnabled && !_detectionModeActive) _redraw();
 }
 
