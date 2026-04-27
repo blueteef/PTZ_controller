@@ -17,26 +17,28 @@ static constexpr float PAN_CDEG_PER_COUNT =
 
 static SPIClass _enc_spi(VSPI);
 
-static uint8_t _enc_read_reg(uint8_t reg) {
-    // Each register needs its own CS transaction on MT6816
+static uint16_t _enc_read_raw() {
     SPISettings cfg(1000000UL, MSBFIRST, SPI_MODE3);
     _enc_spi.beginTransaction(cfg);
+
+    // Reg 0x03: angle[13:6] — CS falling edge latches snapshot
     digitalWrite(ENC_CS_PIN, LOW);
-    _enc_spi.transfer((1 << 7) | (reg & 0x7F));   // read command: MSB=1
-    uint8_t data = _enc_spi.transfer(0x00);
+    _enc_spi.transfer(0x83);
+    uint8_t hi = _enc_spi.transfer(0x00);
     digitalWrite(ENC_CS_PIN, HIGH);
     delayMicroseconds(1);
-    _enc_spi.endTransaction();
-    return data;
-}
 
-static uint16_t _enc_read_raw() {
-    uint8_t hi = _enc_read_reg(0x03);   // angle[13:6]
-    uint8_t lo = _enc_read_reg(0x04);   // angle[5:0] | NO_MAG | parity
+    // Reg 0x04: angle[5:0] | NO_MAG | parity — reads from same latch
+    digitalWrite(ENC_CS_PIN, LOW);
+    _enc_spi.transfer(0x84);
+    uint8_t lo = _enc_spi.transfer(0x00);
+    digitalWrite(ENC_CS_PIN, HIGH);
+    delayMicroseconds(1);
+
+    _enc_spi.endTransaction();
 
     if (lo & 0x02) Serial.println("[enc] NO_MAG");
-
-    return ((uint16_t)hi << 6) | (lo >> 2);   // 14-bit angle
+    return ((uint16_t)hi << 6) | (lo >> 2);
 }
 
 // ---------------------------------------------------------------------------
