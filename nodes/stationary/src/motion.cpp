@@ -129,24 +129,29 @@ static PID _pos_pid = { 0.8f,  0.05f, 0.3f,  0.0f, 0.0f, 255.0f };
 static PID _vel_pid = { 1.2f,  0.1f,  0.05f, 0.0f, 0.0f, 255.0f };
 
 // ---------------------------------------------------------------------------
-// Velocity measurement (differentiated encoder, low-pass filtered)
+// Velocity measurement — derived from raw encoder angle change only.
+// Must NOT use _enc_abs_cdeg (which jumps discontinuously on hall triggers).
 // ---------------------------------------------------------------------------
-static float   _vel_cdeg_s    = 0.0f;
-static int32_t _prev_pos_cdeg = 0;
+static float    _vel_cdeg_s   = 0.0f;
+static uint16_t _vel_prev_raw = 0;
 static uint32_t _prev_tick_us = 0;
-static constexpr float VEL_LPF_ALPHA = 0.25f;   // heavier filter = smoother but laggier
+static constexpr float VEL_LPF_ALPHA = 0.25f;
 
 static void _vel_update() {
     uint32_t now_us = micros();
     float dt = (now_us - _prev_tick_us) * 1e-6f;
-    if (dt < 0.002f) return;   // max 500Hz update
+    if (dt < 0.002f) return;
 
-    int32_t pos = _enc_abs_cdeg - _home_offset;
-    float raw_vel = (float)(pos - _prev_pos_cdeg) / dt;
-    _vel_cdeg_s  = VEL_LPF_ALPHA * raw_vel + (1.0f - VEL_LPF_ALPHA) * _vel_cdeg_s;
+    // Differentiate raw encoder counts — unwrap to handle 0/16383 rollover
+    int16_t delta = (int16_t)(_enc_prev_raw - _vel_prev_raw);
+    if (delta >  8192) delta -= 16384;
+    if (delta < -8192) delta += 16384;
 
-    _prev_pos_cdeg = pos;
-    _prev_tick_us  = now_us;
+    float raw_vel = (delta * PAN_CDEG_PER_COUNT) / dt;
+    _vel_cdeg_s   = VEL_LPF_ALPHA * raw_vel + (1.0f - VEL_LPF_ALPHA) * _vel_cdeg_s;
+
+    _vel_prev_raw = _enc_prev_raw;
+    _prev_tick_us = now_us;
 }
 
 // ---------------------------------------------------------------------------
@@ -171,7 +176,7 @@ void motion_init() {
     // Encoder SPI — MT6816 is read-only, MOSI not connected (pass -1)
     _enc_spi.begin(ENC_SCK_PIN, ENC_MISO_PIN, -1, -1);
     _enc_spi.setFrequency(1000000);
-    _enc_spi.setDataMode(SPI_MODE1);
+    _enc_spi.setDataMode(SPI_MODE0);
     pinMode(ENC_CS_PIN, OUTPUT);
     digitalWrite(ENC_CS_PIN, HIGH);
     delay(10);
@@ -188,6 +193,7 @@ void motion_init() {
     }
 
     _enc_prev_raw  = r2;
+    _vel_prev_raw  = r2;
     _hall_revs     = 0;
     _enc_abs_cdeg  = (int32_t)(r2 * PAN_CDEG_PER_COUNT);
     _home_offset   = _enc_abs_cdeg;
