@@ -36,10 +36,12 @@ static volatile int32_t _hall_revs = 0;   // signed revolution count
 static volatile bool     _hall_dir  = true; // true = forward (RPWM active)
 
 static void IRAM_ATTR _hall_isr() {
-    if (_hall_dir)
-        _hall_revs++;
-    else
-        _hall_revs--;
+    static uint32_t last_ms = 0;
+    uint32_t now = millis();
+    if (now - last_ms < 100) return;   // 100ms debounce — ignore noise
+    last_ms = now;
+    if (_hall_dir) _hall_revs++;
+    else           _hall_revs--;
 }
 
 // ---------------------------------------------------------------------------
@@ -166,10 +168,6 @@ static float _max_speed_cdeg_s = 4500.0f;  // 45 deg/s
 // ---------------------------------------------------------------------------
 
 void motion_init() {
-    // Hall sensor interrupt
-    pinMode(HALL_PIN, INPUT_PULLUP);
-    attachInterrupt(digitalPinToInterrupt(HALL_PIN), _hall_isr, FALLING);
-
     // Encoder SPI — MT6816 is read-only, MOSI not connected (pass -1)
     _enc_spi.begin(ENC_SCK_PIN, ENC_MISO_PIN, -1, -1);
     _enc_spi.setFrequency(1000000);
@@ -197,6 +195,11 @@ void motion_init() {
     _prev_tick_us  = micros();
     _homed = true;
     Serial.println("[motion] encoder OK");
+
+    // Attach hall interrupt AFTER home offset is set — avoids startup noise
+    // corrupting the revolution count before the reference is established
+    pinMode(HALL_PIN, INPUT_PULLUP);
+    attachInterrupt(digitalPinToInterrupt(HALL_PIN), _hall_isr, FALLING);
 
     // Motor
     _pwm_init();
