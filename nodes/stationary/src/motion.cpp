@@ -5,10 +5,15 @@
 #include "can_ids.h"
 
 // ---------------------------------------------------------------------------
-// Encoder — MT6816, 14-bit absolute on output shaft
-// SPI Mode 1, CS active-low
+// Encoder — MT6816, 14-bit absolute on PINION axle (read-only, no MOSI)
+// SPI Mode 1, CS active-low.
+// Pinion turns ENCODER_GEAR_RATIO times per pan shaft revolution.
+// Pan position = (rev_count * 36000) + (pinion_angle_cdeg / ENCODER_GEAR_RATIO)
 // ---------------------------------------------------------------------------
-static constexpr float CDEG_PER_COUNT = 36000.0f / 16384.0f;   // ~2.197 cdeg/count
+static constexpr float CDEG_PER_COUNT =
+    36000.0f / 16384.0f;                    // centideg per raw encoder count
+static constexpr float PAN_CDEG_PER_COUNT =
+    CDEG_PER_COUNT / ENCODER_GEAR_RATIO;    // corrected for gear ratio
 
 static SPIClass _enc_spi(VSPI);
 
@@ -23,18 +28,34 @@ static uint16_t _enc_read_raw() {
     return (((uint16_t)hi << 8) | lo) >> 2;   // 14-bit angle (0–16383)
 }
 
-static int32_t  _enc_turns    = 0;
+// ---------------------------------------------------------------------------
+// Hall sensor — revolution counter
+// Interrupt-driven, direction inferred from motor command state.
+// ---------------------------------------------------------------------------
+static volatile int32_t _hall_revs = 0;   // signed revolution count
+static volatile bool     _hall_dir  = true; // true = forward (RPWM active)
+
+static void IRAM_ATTR _hall_isr() {
+    if (_hall_dir)
+        _hall_revs++;
+    else
+        _hall_revs--;
+}
+
+// ---------------------------------------------------------------------------
+// Combined position state
+// ---------------------------------------------------------------------------
 static uint16_t _enc_prev_raw = 0;
-static int32_t  _enc_abs_cdeg = 0;    // absolute multi-turn centidegrees
-static int32_t  _home_offset  = 0;    // zero reference
+static int32_t  _enc_abs_cdeg = 0;   // absolute pan position in centidegrees
+static int32_t  _home_offset  = 0;
 
 static void _enc_update() {
-    uint16_t raw   = _enc_read_raw();
-    int16_t  delta = (int16_t)(raw - _enc_prev_raw);
-    if (delta >  8192) _enc_turns--;
-    if (delta < -8192) _enc_turns++;
-    _enc_prev_raw  = raw;
-    _enc_abs_cdeg  = (int32_t)((_enc_turns * 16384 + (int32_t)raw) * CDEG_PER_COUNT);
+    uint16_t raw = _enc_read_raw();
+    // Use hall rev count for full revolutions, encoder for fractional angle
+    int32_t revs      = _hall_revs;
+    float   pinion_cdeg = raw * CDEG_PER_COUNT;
+    _enc_abs_cdeg = (int32_t)(revs * 36000.0f + pinion_cdeg / ENCODER_GEAR_RATIO);
+    _enc_prev_raw = raw;
 }
 
 // ---------------------------------------------------------------------------
@@ -57,6 +78,7 @@ static void _pwm_init() {
 
 // duty: -255 (full reverse) to +255 (full forward), 0 = coast
 static void _motor_set(int16_t duty) {
+    _hall_dir = (duty >= 0);   // keep direction in sync for hall ISR
     if (duty >= 0) {
         ledcWrite(0, (uint8_t)min((int16_t)255, duty));
         ledcWrite(1, 0);
@@ -144,8 +166,12 @@ static float _max_speed_cdeg_s = 4500.0f;  // 45 deg/s
 // ---------------------------------------------------------------------------
 
 void motion_init() {
-    // Encoder SPI
-    _enc_spi.begin(ENC_SCK_PIN, ENC_MISO_PIN, ENC_MOSI_PIN, -1);
+    // Hall sensor interrupt
+    pinMode(HALL_PIN, INPUT_PULLUP);
+    attachInterrupt(digitalPinToInterrupt(HALL_PIN), _hall_isr, FALLING);
+
+    // Encoder SPI — MT6816 is read-only, MOSI not connected (pass -1)
+    _enc_spi.begin(ENC_SCK_PIN, ENC_MISO_PIN, -1, -1);
     _enc_spi.setFrequency(1000000);
     _enc_spi.setDataMode(SPI_MODE1);
     pinMode(ENC_CS_PIN, OUTPUT);
@@ -164,7 +190,8 @@ void motion_init() {
     }
 
     _enc_prev_raw  = r2;
-    _enc_abs_cdeg  = (int32_t)(_enc_prev_raw * CDEG_PER_COUNT);
+    _hall_revs     = 0;
+    _enc_abs_cdeg  = (int32_t)(r2 * PAN_CDEG_PER_COUNT);
     _home_offset   = _enc_abs_cdeg;
     _prev_pos_cdeg = 0;
     _prev_tick_us  = micros();
