@@ -25,7 +25,10 @@ static uint16_t _enc_read_raw() {
     lo = _enc_spi.transfer(0x00);
     delayMicroseconds(1);
     digitalWrite(ENC_CS_PIN, HIGH);
-    return (((uint16_t)hi << 8) | lo) >> 2;   // 14-bit angle (0–16383)
+    uint16_t full = ((uint16_t)hi << 8) | lo;
+    bool no_mag = (full >> 1) & 0x1;   // bit1 = NO_MAG
+    if (no_mag) Serial.println("[enc] NO_MAG — magnet not detected");
+    return full >> 2;   // 14-bit angle (0–16383)
 }
 
 // ---------------------------------------------------------------------------
@@ -47,7 +50,7 @@ static void IRAM_ATTR _hall_isr() {
 // ---------------------------------------------------------------------------
 // Combined position state
 // ---------------------------------------------------------------------------
-static uint16_t _enc_prev_raw = 0;
+uint16_t _enc_prev_raw = 0;
 static int32_t  _enc_abs_cdeg = 0;   // absolute pan position in centidegrees
 static int32_t  _home_offset  = 0;
 
@@ -173,9 +176,7 @@ static float _max_speed_cdeg_s = 4500.0f;  // 45 deg/s
 // ---------------------------------------------------------------------------
 
 void motion_init() {
-    // Encoder SPI — MT6816 is read-only, no MOSI wire needed.
-    // GPIO23 used as dummy MOSI to ensure the SPI peripheral fully initialises.
-    _enc_spi.begin(ENC_SCK_PIN, ENC_MISO_PIN, 23, -1);
+    _enc_spi.begin(ENC_SCK_PIN, ENC_MISO_PIN, ENC_MOSI_PIN, -1);
     _enc_spi.setFrequency(1000000);
     _enc_spi.setDataMode(SPI_MODE0);
     pinMode(ENC_CS_PIN, OUTPUT);

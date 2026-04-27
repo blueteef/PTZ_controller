@@ -40,10 +40,10 @@
 // Pan shaft angle = pinion_angle / ENCODER_GEAR_RATIO
 // Hardware SPI (VSPI)
 // ---------------------------------------------------------------------------
+#define ENC_MOSI_PIN    23
 #define ENC_MISO_PIN    19
 #define ENC_SCK_PIN     18
 #define ENC_CS_PIN      15
-// GPIO23 freed — MT6816 is read-only, MOSI not connected
 
 // Pinion:pan gear ratio — pinion turns this many times per pan revolution
 #define ENCODER_GEAR_RATIO  4.0f    // 100t ring / 25t pinion
