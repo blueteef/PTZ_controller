@@ -53,6 +53,7 @@ MSG_FAULT        = 0x1F  # fault report      — u8 node_id, u8 fault_code
 # ---------------------------------------------------------------------------
 AXIS_PAN  = 0x00
 AXIS_TILT = 0x01
+AXIS_ALL  = 0xFF
 
 # ---------------------------------------------------------------------------
 # CAN ID packing / unpacking
