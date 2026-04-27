@@ -67,33 +67,35 @@ static void _enc_update() {
 // BTS7960 H-bridge
 // ---------------------------------------------------------------------------
 static void _pwm_init() {
-    ledcAttach(MOTOR_RPWM_PIN, MOTOR_PWM_FREQ, MOTOR_PWM_BITS);
-    ledcAttach(MOTOR_LPWM_PIN, MOTOR_PWM_FREQ, MOTOR_PWM_BITS);
+    ledcSetup(0, MOTOR_PWM_FREQ, MOTOR_PWM_BITS);
+    ledcSetup(1, MOTOR_PWM_FREQ, MOTOR_PWM_BITS);
+    ledcAttachPin(MOTOR_RPWM_PIN, 0);
+    ledcAttachPin(MOTOR_LPWM_PIN, 1);
 
     pinMode(MOTOR_REN_PIN, OUTPUT);
     pinMode(MOTOR_LEN_PIN, OUTPUT);
     digitalWrite(MOTOR_REN_PIN, HIGH);
     digitalWrite(MOTOR_LEN_PIN, HIGH);
 
-    ledcWrite(MOTOR_RPWM_PIN, 0);
-    ledcWrite(MOTOR_LPWM_PIN, 0);
+    ledcWrite(0, 0);
+    ledcWrite(1, 0);
 }
 
 // duty: -255 (full reverse) to +255 (full forward), 0 = coast
 static void _motor_set(int16_t duty) {
     _hall_dir = (duty >= 0);
     if (duty >= 0) {
-        ledcWrite(MOTOR_RPWM_PIN, (uint8_t)min((int16_t)255, duty));
-        ledcWrite(MOTOR_LPWM_PIN, 0);
+        ledcWrite(0, (uint8_t)min((int16_t)255, duty));
+        ledcWrite(1, 0);
     } else {
-        ledcWrite(MOTOR_RPWM_PIN, 0);
-        ledcWrite(MOTOR_LPWM_PIN, (uint8_t)min((int16_t)255, (int16_t)-duty));
+        ledcWrite(0, 0);
+        ledcWrite(1, (uint8_t)min((int16_t)255, (int16_t)-duty));
     }
 }
 
 static void _motor_brake() {
-    ledcWrite(MOTOR_RPWM_PIN, 0);
-    ledcWrite(MOTOR_LPWM_PIN, 0);
+    ledcWrite(0, 0);
+    ledcWrite(1, 0);
     digitalWrite(MOTOR_REN_PIN, LOW);
     digitalWrite(MOTOR_LEN_PIN, LOW);
 }
