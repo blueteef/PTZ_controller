@@ -173,8 +173,9 @@ static float _max_speed_cdeg_s = 4500.0f;  // 45 deg/s
 // ---------------------------------------------------------------------------
 
 void motion_init() {
-    // Encoder SPI — MT6816 is read-only, MOSI not connected (pass -1)
-    _enc_spi.begin(ENC_SCK_PIN, ENC_MISO_PIN, -1, -1);
+    // Encoder SPI — MT6816 is read-only, no MOSI wire needed.
+    // GPIO23 used as dummy MOSI to ensure the SPI peripheral fully initialises.
+    _enc_spi.begin(ENC_SCK_PIN, ENC_MISO_PIN, 23, -1);
     _enc_spi.setFrequency(1000000);
     _enc_spi.setDataMode(SPI_MODE0);
     pinMode(ENC_CS_PIN, OUTPUT);
