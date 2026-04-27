@@ -17,18 +17,26 @@ static constexpr float PAN_CDEG_PER_COUNT =
 
 static SPIClass _enc_spi(VSPI);
 
-static uint16_t _enc_read_raw() {
-    uint8_t hi, lo;
+static uint8_t _enc_read_reg(uint8_t reg) {
+    // Each register needs its own CS transaction on MT6816
+    SPISettings cfg(1000000UL, MSBFIRST, SPI_MODE3);
+    _enc_spi.beginTransaction(cfg);
     digitalWrite(ENC_CS_PIN, LOW);
-    delayMicroseconds(1);
-    hi = _enc_spi.transfer(0x83);
-    lo = _enc_spi.transfer(0x00);
-    delayMicroseconds(1);
+    _enc_spi.transfer((1 << 7) | (reg & 0x7F));   // read command: MSB=1
+    uint8_t data = _enc_spi.transfer(0x00);
     digitalWrite(ENC_CS_PIN, HIGH);
-    uint16_t full = ((uint16_t)hi << 8) | lo;
-    bool no_mag = (full >> 1) & 0x1;   // bit1 = NO_MAG
-    if (no_mag) Serial.println("[enc] NO_MAG — magnet not detected");
-    return full >> 2;   // 14-bit angle (0–16383)
+    delayMicroseconds(1);
+    _enc_spi.endTransaction();
+    return data;
+}
+
+static uint16_t _enc_read_raw() {
+    uint8_t hi = _enc_read_reg(0x03);   // angle[13:6]
+    uint8_t lo = _enc_read_reg(0x04);   // angle[5:0] | NO_MAG | parity
+
+    if (lo & 0x02) Serial.println("[enc] NO_MAG");
+
+    return ((uint16_t)hi << 6) | (lo >> 2);   // 14-bit angle
 }
 
 // ---------------------------------------------------------------------------
@@ -176,11 +184,9 @@ static float _max_speed_cdeg_s = 4500.0f;  // 45 deg/s
 // ---------------------------------------------------------------------------
 
 void motion_init() {
-    _enc_spi.begin(ENC_SCK_PIN, ENC_MISO_PIN, ENC_MOSI_PIN, -1);
-    _enc_spi.setFrequency(1000000);
-    _enc_spi.setDataMode(SPI_MODE0);
     pinMode(ENC_CS_PIN, OUTPUT);
     digitalWrite(ENC_CS_PIN, HIGH);
+    _enc_spi.begin(ENC_SCK_PIN, ENC_MISO_PIN, ENC_MOSI_PIN, -1);
     delay(10);
 
     // Validate encoder — two consecutive reads must agree within 1°
