@@ -197,7 +197,6 @@ void motion_init() {
     _hall_revs     = 0;
     _enc_abs_cdeg  = (int32_t)(r2 * PAN_CDEG_PER_COUNT);
     _home_offset   = _enc_abs_cdeg;
-    _prev_pos_cdeg = 0;
     _prev_tick_us  = micros();
     _homed = true;
     Serial.println("[motion] encoder OK");
@@ -289,7 +288,6 @@ void motion_estop() {
 void motion_home() {
     motion_stop();
     _home_offset   = _enc_abs_cdeg;
-    _prev_pos_cdeg = 0;
     _homed = true;
 }
 
