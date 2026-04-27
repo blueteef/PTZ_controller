@@ -33,9 +33,12 @@ from app import config
 from app.state import state
 
 from app.schemas import make_telemetry, make_detections, make_error
-from app.serial_bridge import protocol
-from app.serial_bridge.bridge import bridge
 from app.vision.pipeline import pipeline
+from app.can.bridge import send as can_send
+from app.can.protocol import (
+    build_vel_cmd, build_stop, build_estop, build_home_cmd, build_settings,
+    AXIS_PAN, AXIS_TILT, AXIS_ALL,
+)
 
 log = logging.getLogger(__name__)
 
@@ -117,48 +120,38 @@ async def _handle_message(ws: WebSocket, raw: str) -> None:
     if t == "velocity":
         pan  = float(msg.get("pan",  0.0))
         tilt = float(msg.get("tilt", 0.0))
-        # Direction invert is handled at the ESP32 hardware level (set invert).
-        bridge.send(protocol.cmd_vel("pan",  pan))
-        bridge.send(protocol.cmd_vel("tilt", tilt))
+        can_send(build_vel_cmd(AXIS_PAN,  int(pan  * 100)))
+        can_send(build_vel_cmd(AXIS_TILT, int(tilt * 100)))
 
     elif t == "stop":
         axis = msg.get("axis", "all")
-        # Zero velocity first — MKS CR_UART mode keeps last velocity otherwise
-        if axis in ("pan", "all"):
-            bridge.send_urgent(protocol.cmd_vel("pan", 0.0))
-        if axis in ("tilt", "all"):
-            bridge.send_urgent(protocol.cmd_vel("tilt", 0.0))
-        bridge.send_urgent(protocol.cmd_stop(axis))
+        can_axis = AXIS_PAN if axis == "pan" else AXIS_TILT if axis == "tilt" else AXIS_ALL
+        can_send(build_stop(can_axis))
 
     elif t == "estop":
-        bridge.send_urgent(protocol.cmd_vel("pan",  0.0))
-        bridge.send_urgent(protocol.cmd_vel("tilt", 0.0))
-        bridge.send_urgent(protocol.cmd_estop())
+        can_send(build_estop())
 
     elif t == "home":
         axis = msg.get("axis", "all")
-        bridge.send(protocol.cmd_home(axis))
+        can_axis = AXIS_PAN if axis == "pan" else AXIS_TILT if axis == "tilt" else AXIS_ALL
+        can_send(build_home_cmd(can_axis))
 
     elif t == "set_detection":
         mode = msg.get("mode", "none")
         pipeline.set_mode(mode)
 
     elif t == "update_settings":
-        # Runtime tuning — applied immediately, not persisted across restart.
         if "tracking_speed" in msg:
             config.PID_MAX_VEL_DEG_S = float(msg["tracking_speed"])
-        if "pan_invert" in msg:
-            config.PAN_INVERT = bool(msg["pan_invert"])
-            bridge.send(protocol.cmd_set_invert("pan", config.PAN_INVERT))
-        if "tilt_invert" in msg:
-            config.TILT_INVERT = bool(msg["tilt_invert"])
-            bridge.send(protocol.cmd_set_invert("tilt", config.TILT_INVERT))
         if "speed" in msg:
             config.MAX_SPEED_DEG_S = float(msg["speed"])
-            bridge.send(protocol.cmd_set_speed(config.MAX_SPEED_DEG_S))
         if "accel" in msg:
             config.ACCEL_DEG_S2 = float(msg["accel"])
-            bridge.send(protocol.cmd_set_accel(config.ACCEL_DEG_S2))
+        # Push current speed+accel to all nodes
+        can_send(build_settings(
+            int(config.MAX_SPEED_DEG_S * 100),
+            int(config.ACCEL_DEG_S2    * 100),
+        ))
 
     elif t == "set_tracking":
         enabled     = bool(msg.get("enabled", False))
