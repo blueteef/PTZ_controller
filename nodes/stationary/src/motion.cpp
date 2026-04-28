@@ -100,11 +100,9 @@ static void _enc_update() {
 
     // Position = hall_revs × 360° + encoder multi-turn position
     // encoder total counts = _enc_turns × 16384 + raw
+    // Position from encoder multi-turn only — hall sensor used for homing only
     int32_t enc_total = (int32_t)_enc_turns * 16384 + (int32_t)raw;
-    _enc_abs_cdeg = (int32_t)(
-        _hall_revs * 36000.0f +
-        (float)enc_total * CDEG_PER_COUNT / ENCODER_GEAR_RATIO
-    );
+    _enc_abs_cdeg = (int32_t)((float)enc_total * CDEG_PER_COUNT / ENCODER_GEAR_RATIO);
 }
 
 // ---------------------------------------------------------------------------
