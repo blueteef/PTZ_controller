@@ -166,7 +166,7 @@ void sensors_init() {
     // INA226
     _ina_ok = _ina.init();
     if (_ina_ok) {
-        _ina.setResistorRange(0.1f, 3.0f);   // 0.1Ω shunt, 3A max
+        _ina.setResistorRange(0.002f, 20.0f);   // 2mΩ shunt (common on breakout boards), 20A max
         _ina.setCorrectionFactor(1.0f);
         Serial.printf("[sensors] INA226 OK  Vbus=%.2fV Vshunt=%.4fV I=%.1fmA\n",
             _ina.getBusVoltage_V(),
