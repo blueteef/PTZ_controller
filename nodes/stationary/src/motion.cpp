@@ -68,16 +68,27 @@ static void IRAM_ATTR _hall_isr() {
 // Combined position state
 // ---------------------------------------------------------------------------
 static uint16_t _enc_prev_raw = 0;
-static int32_t  _enc_abs_cdeg = 0;   // absolute pan position in centidegrees
+static int16_t  _enc_turns    = 0;   // encoder multi-turn counter (wraps at 0/16383)
+static int32_t  _enc_abs_cdeg = 0;
 static int32_t  _home_offset  = 0;
 
 static void _enc_update() {
-    uint16_t raw = _enc_read_raw();
-    // Use hall rev count for full revolutions, encoder for fractional angle
-    int32_t revs      = _hall_revs;
-    float   pinion_cdeg = raw * CDEG_PER_COUNT;
-    _enc_abs_cdeg = (int32_t)(revs * 36000.0f + pinion_cdeg / ENCODER_GEAR_RATIO);
+    uint16_t raw   = _enc_read_raw();
+    int16_t  delta = (int16_t)(raw - _enc_prev_raw);
+
+    // Track encoder rollover — each full encoder revolution = 90° of pan
+    if (delta >  8192) _enc_turns--;
+    if (delta < -8192) _enc_turns++;
+
     _enc_prev_raw = raw;
+
+    // Position = hall_revs × 360° + encoder multi-turn position
+    // encoder total counts = _enc_turns × 16384 + raw
+    int32_t enc_total = (int32_t)_enc_turns * 16384 + (int32_t)raw;
+    _enc_abs_cdeg = (int32_t)(
+        _hall_revs * 36000.0f +
+        (float)enc_total * CDEG_PER_COUNT / ENCODER_GEAR_RATIO
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -213,6 +224,7 @@ void motion_init() {
 
     _enc_prev_raw  = r2;
     _vel_prev_raw  = r2;
+    _enc_turns     = 0;
     _hall_revs     = 0;
     _enc_abs_cdeg  = (int32_t)(r2 * PAN_CDEG_PER_COUNT);
     _home_offset   = _enc_abs_cdeg;
@@ -306,6 +318,10 @@ void motion_estop() {
 
 void motion_home() {
     motion_stop();
+    _enc_turns     = 0;
+    _hall_revs     = 0;
+    _enc_prev_raw  = _enc_read_raw();
+    _enc_abs_cdeg  = (int32_t)(_enc_prev_raw * PAN_CDEG_PER_COUNT);
     _home_offset   = _enc_abs_cdeg;
     _homed = true;
 }
