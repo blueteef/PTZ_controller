@@ -17,26 +17,35 @@ static constexpr float PAN_CDEG_PER_COUNT =
 
 static SPIClass _enc_spi(VSPI);
 
+// Bit-bang SPI Mode 3 (CPOL=1, CPHA=1): clock idle HIGH, sample on falling edge
+static uint8_t _bb_transfer(uint8_t val) {
+    uint8_t result = 0;
+    for (int i = 7; i >= 0; i--) {
+        digitalWrite(ENC_MOSI_PIN, (val >> i) & 1);
+        delayMicroseconds(1);
+        digitalWrite(ENC_SCK_PIN, LOW);    // falling edge — encoder outputs bit
+        delayMicroseconds(1);
+        result |= (digitalRead(ENC_MISO_PIN) << i);
+        digitalWrite(ENC_SCK_PIN, HIGH);   // rising edge
+        delayMicroseconds(1);
+    }
+    return result;
+}
+
+static uint8_t _bb_read_reg(uint8_t reg) {
+    digitalWrite(ENC_CS_PIN, LOW);
+    delayMicroseconds(1);
+    _bb_transfer(0x80 | reg);
+    uint8_t data = _bb_transfer(0x00);
+    digitalWrite(ENC_CS_PIN, HIGH);
+    delayMicroseconds(2);
+    return data;
+}
+
 static uint16_t _enc_read_raw() {
-    SPISettings cfg(1000000UL, MSBFIRST, SPI_MODE3);
-    _enc_spi.beginTransaction(cfg);
-
-    // Reg 0x03: angle[13:6] — CS falling edge latches snapshot
-    digitalWrite(ENC_CS_PIN, LOW);
-    _enc_spi.transfer(0x83);
-    uint8_t hi = _enc_spi.transfer(0x00);
-    digitalWrite(ENC_CS_PIN, HIGH);
-    delayMicroseconds(1);
-
-    // Reg 0x04: angle[5:0] | NO_MAG | parity — reads from same latch
-    digitalWrite(ENC_CS_PIN, LOW);
-    _enc_spi.transfer(0x84);
-    uint8_t lo = _enc_spi.transfer(0x00);
-    digitalWrite(ENC_CS_PIN, HIGH);
-    delayMicroseconds(1);
-
-    _enc_spi.endTransaction();
-
+    uint8_t hi = _bb_read_reg(0x03);
+    uint8_t lo = _bb_read_reg(0x04);
+    Serial.printf("[enc] hi=0x%02X lo=0x%02X\n", hi, lo);
     if (lo & 0x02) Serial.println("[enc] NO_MAG");
     return ((uint16_t)hi << 6) | (lo >> 2);
 }
@@ -186,9 +195,11 @@ static float _max_speed_cdeg_s = 4500.0f;  // 45 deg/s
 // ---------------------------------------------------------------------------
 
 void motion_init() {
-    pinMode(ENC_CS_PIN, OUTPUT);
-    digitalWrite(ENC_CS_PIN, HIGH);
-    _enc_spi.begin(ENC_SCK_PIN, ENC_MISO_PIN, ENC_MOSI_PIN, ENC_CS_PIN);
+    // Bit-bang SPI setup — bypasses hardware SPI peripheral
+    pinMode(ENC_CS_PIN,   OUTPUT); digitalWrite(ENC_CS_PIN,   HIGH);
+    pinMode(ENC_SCK_PIN,  OUTPUT); digitalWrite(ENC_SCK_PIN,  HIGH);  // idle HIGH (Mode 3)
+    pinMode(ENC_MOSI_PIN, OUTPUT); digitalWrite(ENC_MOSI_PIN, LOW);
+    pinMode(ENC_MISO_PIN, INPUT);
     delay(10);
 
     // Validate encoder — two consecutive reads must agree within 1°
