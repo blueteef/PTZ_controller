@@ -31,7 +31,7 @@
 #define MOTOR_REN_PIN   14      // right bridge enable (active high)
 #define MOTOR_LEN_PIN   17      // left  bridge enable (active high)
 
-#define MOTOR_PWM_FREQ  10000   // Hz — above audible range
+#define MOTOR_PWM_FREQ  20000   // Hz — above audible range, reduces motor ringing
 #define MOTOR_PWM_BITS  8       // 0–255 resolution
 
 // ---------------------------------------------------------------------------

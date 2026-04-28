@@ -88,9 +88,9 @@ static void _enc_update() {
     uint16_t raw   = _enc_read_raw();
     int16_t  delta = (int16_t)(raw - _enc_prev_raw);
 
-    // Reject implausible deltas — at 360°/s max, loop runs ~2ms, max ~65 counts/tick
-    // Allow up to 300 for headroom; anything larger before rollover range is noise
-    if (abs(delta) > 300 && abs(delta) < 14384) return;
+    // Accept only normal movement (<300 counts/tick) or true rollover (>16000 counts)
+    // Anything in between is noise — real rollovers always jump nearly the full 16384
+    if (abs(delta) > 300 && abs(delta) < 16000) return;
 
     // Track encoder rollover — each full encoder revolution = 90° of pan
     if (delta >  8192) _enc_turns--;
