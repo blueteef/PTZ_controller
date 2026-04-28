@@ -205,14 +205,16 @@ static void _vel_update() {
 enum class MotionMode : uint8_t { IDLE, VELOCITY, POSITION, HOMING };
 static MotionMode _mode          = MotionMode::IDLE;
 static uint32_t   _home_start_ms = 0;
-static int16_t    _cmd_vel       = 0;     // cdeg/s (velocity mode)
-static int32_t    _target_cdeg   = 0;     // target position (position mode)
+static int16_t    _cmd_vel       = 0;     // target velocity from Pi (cdeg/s)
+static float      _ramp_vel      = 0.0f;  // actual ramped velocity fed to PID
+static int32_t    _target_cdeg   = 0;
 static bool       _homed         = false;
 static bool       _fault         = false;
 static bool       _enabled       = false;
 
 // Settings (updated by MSG_SETTINGS)
-static float _max_speed_cdeg_s = 4500.0f;  // 45 deg/s
+static float _max_speed_cdeg_s = 4500.0f;   // 45 deg/s
+static float _accel_cdeg_s2    = 12000.0f;  // 120 deg/s²
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -266,12 +268,27 @@ void motion_tick() {
     int16_t duty = 0;
 
     if (_mode == MotionMode::VELOCITY) {
-        float dt = 0.01f;   // nominal; vel_update handles actual timing
-        float error = (float)_cmd_vel - _vel_cdeg_s;
+        // Ramp _ramp_vel toward _cmd_vel at configured acceleration rate
+        static uint32_t last_ramp_us = 0;
+        uint32_t now_us = micros();
+        float dt_ramp = (now_us - last_ramp_us) * 1e-6f;
+        if (dt_ramp > 0.0f && dt_ramp < 0.5f) {
+            float step = _accel_cdeg_s2 * dt_ramp;
+            float target = (float)_cmd_vel;
+            if (_ramp_vel < target)
+                _ramp_vel = fminf(_ramp_vel + step, target);
+            else if (_ramp_vel > target)
+                _ramp_vel = fmaxf(_ramp_vel - step, target);
+        }
+        last_ramp_us = now_us;
+
+        float dt = 0.01f;
+        float error = _ramp_vel - _vel_cdeg_s;
         duty = (int16_t)_vel_pid.compute(error, dt);
 
-        // Stop cleanly at zero command
-        if (_cmd_vel == 0 && fabsf(_vel_cdeg_s) < 50.0f) {
+        // Stop cleanly when ramped velocity and actual velocity both reach zero
+        if (_cmd_vel == 0 && fabsf(_ramp_vel) < 10.0f && fabsf(_vel_cdeg_s) < 50.0f) {
+            _ramp_vel = 0.0f;
             _motor_set(0);
             _mode = MotionMode::IDLE;
             return;
@@ -340,16 +357,18 @@ void motion_set_position(int32_t pos_cdeg) {
 }
 
 void motion_stop() {
-    _mode    = MotionMode::IDLE;
-    _cmd_vel = 0;
+    _mode     = MotionMode::IDLE;
+    _cmd_vel  = 0;
+    _ramp_vel = 0.0f;
     _motor_set(0);
     _vel_pid.reset();
     _pos_pid.reset();
 }
 
 void motion_estop() {
-    _mode    = MotionMode::IDLE;
-    _cmd_vel = 0;
+    _mode     = MotionMode::IDLE;
+    _cmd_vel  = 0;
+    _ramp_vel = 0.0f;
     _motor_brake();
     _vel_pid.reset();
     _pos_pid.reset();
@@ -378,9 +397,9 @@ void motion_clear_can_fault() {
     }
 }
 
-void motion_set_settings(uint16_t max_speed_cdeg_s, uint16_t /*accel_cdeg_s2*/) {
-    // accel is handled implicitly by PID rate limiting — ignore for now
+void motion_set_settings(uint16_t max_speed_cdeg_s, uint16_t accel_cdeg_s2) {
     _max_speed_cdeg_s = (float)max_speed_cdeg_s;
+    _accel_cdeg_s2    = (float)accel_cdeg_s2;
 }
 
 int32_t motion_get_pos_cdeg() {
