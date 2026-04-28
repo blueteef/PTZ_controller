@@ -51,7 +51,7 @@
 // ---------------------------------------------------------------------------
 // Homing
 // ---------------------------------------------------------------------------
-#define HOME_DUTY           50      // PWM duty (0–255) during homing sweep — slow
+#define HOME_DUTY           150     // PWM duty (0–255) during homing sweep
 #define HOME_DIRECTION      1       // 1 = forward (RPWM), -1 = reverse (LPWM)
 #define HOME_TIMEOUT_MS     20000   // ms before fault if hall not found
 
