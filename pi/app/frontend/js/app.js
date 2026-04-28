@@ -88,7 +88,7 @@ function handleMessage(msg) {
 
 function setSerialStatus(ok) {
   const el = document.getElementById("serial-badge");
-  el.textContent = ok ? "ESP32 ✓" : "ESP32 ✗";
+  el.textContent = ok ? "CAN ✓" : "CAN ✗";
   el.className = "badge " + (ok ? "ok" : "bad");
 }
 

@@ -20,6 +20,7 @@ For development (auto-reload, Pi not required):
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import signal
 import sys
@@ -31,6 +32,8 @@ from fastapi.staticfiles import StaticFiles
 
 from app.serial_bridge.bridge import bridge
 from app.can.bridge import start as can_start, stop as can_stop
+from app.can.protocol import build_home_cmd, AXIS_ALL
+from app.can.bridge import send as can_send
 from app.imu.reader import imu_reader
 from app.camera.capture import camera
 from app.camera.thermal import thermal_camera
@@ -72,6 +75,14 @@ async def lifespan(app: FastAPI):
 
     # Inject bridge into tracker
     tracker_module.tracker = GimbalTracker(send_fn=bridge.send)
+
+    # Auto-home all nodes after a short delay to allow ESP32s to finish booting
+    async def _auto_home():
+        await asyncio.sleep(5.0)
+        can_send(build_home_cmd(AXIS_ALL))
+        log.info("Auto-home sent to all CAN nodes")
+
+    asyncio.create_task(_auto_home())
 
     log.info("All subsystems started")
     yield
