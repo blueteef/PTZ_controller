@@ -6,7 +6,7 @@
 
 // ---------------------------------------------------------------------------
 // Encoder — MT6816, 14-bit absolute on PINION axle (read-only, no MOSI)
-// SPI Mode 1, CS active-low.
+// SPI Mode 3 (CPOL=1 CPHA=1), CS active-low.
 // Pinion turns ENCODER_GEAR_RATIO times per pan shaft revolution.
 // Pan position = (rev_count * 36000) + (pinion_angle_cdeg / ENCODER_GEAR_RATIO)
 // ---------------------------------------------------------------------------
@@ -188,7 +188,7 @@ static float _max_speed_cdeg_s = 4500.0f;  // 45 deg/s
 void motion_init() {
     pinMode(ENC_CS_PIN, OUTPUT);
     digitalWrite(ENC_CS_PIN, HIGH);
-    _enc_spi.begin(ENC_SCK_PIN, ENC_MISO_PIN, ENC_MOSI_PIN, -1);
+    _enc_spi.begin(ENC_SCK_PIN, ENC_MISO_PIN, ENC_MOSI_PIN, ENC_CS_PIN);
     delay(10);
 
     // Validate encoder — two consecutive reads must agree within 1°
