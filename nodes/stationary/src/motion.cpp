@@ -42,9 +42,21 @@ static uint8_t _bb_read_reg(uint8_t reg) {
     return data;
 }
 
+static bool _enc_parity_ok(uint8_t hi, uint8_t lo) {
+    uint16_t word = ((uint16_t)hi << 8) | lo;
+    uint8_t ones = 0;
+    for (int i = 1; i <= 15; i++)
+        if (word & (1 << i)) ones++;
+    return (word & 0x01) == (ones % 2 == 0 ? 0 : 1);
+}
+
 static uint16_t _enc_read_raw() {
     uint8_t hi = _bb_read_reg(0x03);
     uint8_t lo = _bb_read_reg(0x04);
+
+    if ((lo & 0x02) || !_enc_parity_ok(hi, lo))
+        return _enc_prev_raw;   // bad read — return last known good value
+
     return ((uint16_t)hi << 6) | (lo >> 2);
 }
 
@@ -75,6 +87,9 @@ static int32_t  _home_offset  = 0;
 static void _enc_update() {
     uint16_t raw   = _enc_read_raw();
     int16_t  delta = (int16_t)(raw - _enc_prev_raw);
+
+    // Sanity check — reject readings that imply impossible speed (noise/corruption)
+    if (abs(delta) > 2000 && abs(delta) < 14384) return;
 
     // Track encoder rollover — each full encoder revolution = 90° of pan
     if (delta >  8192) _enc_turns--;
