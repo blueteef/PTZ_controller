@@ -42,6 +42,8 @@ static uint8_t _bb_read_reg(uint8_t reg) {
     return data;
 }
 
+static uint16_t _enc_prev_raw_fwd = 0;   // forward declaration for parity fallback
+
 static bool _enc_parity_ok(uint8_t hi, uint8_t lo) {
     uint16_t word = ((uint16_t)hi << 8) | lo;
     uint8_t ones = 0;
@@ -55,9 +57,11 @@ static uint16_t _enc_read_raw() {
     uint8_t lo = _bb_read_reg(0x04);
 
     if ((lo & 0x02) || !_enc_parity_ok(hi, lo))
-        return _enc_prev_raw;   // bad read — return last known good value
+        return _enc_prev_raw_fwd;   // bad read — return last known good value
 
-    return ((uint16_t)hi << 6) | (lo >> 2);
+    uint16_t result = ((uint16_t)hi << 6) | (lo >> 2);
+    _enc_prev_raw_fwd = result;
+    return result;
 }
 
 // ---------------------------------------------------------------------------
