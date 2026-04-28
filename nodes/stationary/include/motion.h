@@ -12,7 +12,8 @@ void    motion_set_velocity(int16_t vel_cdeg_s);
 void    motion_set_position(int32_t pos_cdeg);
 void    motion_stop();
 void    motion_estop();
-void    motion_home();
+void    motion_home();           // trigger homing sweep to hall sensor
+bool    motion_is_homing();      // true while sweep is in progress
 void    motion_set_settings(uint16_t max_speed_cdeg_s, uint16_t accel_cdeg_s2);
 
 // State readback

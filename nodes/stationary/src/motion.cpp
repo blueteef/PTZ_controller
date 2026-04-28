@@ -64,14 +64,16 @@ static uint16_t _enc_read_raw() {
 // Hall sensor — revolution counter
 // Interrupt-driven, direction inferred from motor command state.
 // ---------------------------------------------------------------------------
-static volatile int32_t _hall_revs = 0;   // signed revolution count
-static volatile bool     _hall_dir  = true; // true = forward (RPWM active)
+static volatile int32_t _hall_revs   = 0;
+static volatile bool    _hall_dir    = true;
+static volatile bool    _hall_fired  = false;  // set on any hall trigger, cleared by homing
 
 static void IRAM_ATTR _hall_isr() {
     static uint32_t last_ms = 0;
     uint32_t now = millis();
-    if (now - last_ms < 100) return;   // 100ms debounce — ignore noise
+    if (now - last_ms < 100) return;
     last_ms = now;
+    _hall_fired = true;
     if (_hall_dir) _hall_revs++;
     else           _hall_revs--;
 }
@@ -203,8 +205,9 @@ static void _vel_update() {
 // ---------------------------------------------------------------------------
 // State
 // ---------------------------------------------------------------------------
-enum class MotionMode : uint8_t { IDLE, VELOCITY, POSITION };
+enum class MotionMode : uint8_t { IDLE, VELOCITY, POSITION, HOMING };
 static MotionMode _mode          = MotionMode::IDLE;
+static uint32_t   _home_start_ms = 0;
 static int16_t    _cmd_vel       = 0;     // cdeg/s (velocity mode)
 static int32_t    _target_cdeg   = 0;     // target position (position mode)
 static bool       _homed         = false;
@@ -289,6 +292,30 @@ void motion_tick() {
             return;
         }
 
+    } else if (_mode == MotionMode::HOMING) {
+        if (_hall_fired) {
+            // Hall triggered — this is home
+            _motor_set(0);
+            _enc_turns    = 0;
+            _hall_revs    = 0;
+            _hall_fired   = false;
+            _enc_prev_raw = _enc_read_raw();
+            _enc_abs_cdeg = (int32_t)(_enc_prev_raw * PAN_CDEG_PER_COUNT);
+            _home_offset  = _enc_abs_cdeg;
+            _homed        = true;
+            _mode         = MotionMode::IDLE;
+            Serial.println("[motion] homing complete");
+        } else if (millis() - _home_start_ms > HOME_TIMEOUT_MS) {
+            _motor_set(0);
+            _fault = true;
+            _mode  = MotionMode::IDLE;
+            Serial.println("[motion] homing TIMEOUT — fault");
+        } else {
+            // Drive slowly toward hall sensor
+            _motor_set(HOME_DIRECTION > 0 ? HOME_DUTY : -HOME_DUTY);
+        }
+        return;
+
     } else {
         return;
     }
@@ -332,13 +359,19 @@ void motion_estop() {
 }
 
 void motion_home() {
-    motion_stop();
-    _enc_turns     = 0;
-    _hall_revs     = 0;
-    _enc_prev_raw  = _enc_read_raw();
-    _enc_abs_cdeg  = (int32_t)(_enc_prev_raw * PAN_CDEG_PER_COUNT);
-    _home_offset   = _enc_abs_cdeg;
-    _homed = true;
+    if (_fault) return;
+    _vel_pid.reset();
+    _pos_pid.reset();
+    _hall_fired    = false;
+    _home_start_ms = millis();
+    _motor_enable();
+    _enabled       = true;
+    _mode          = MotionMode::HOMING;
+    Serial.println("[motion] homing sweep started");
+}
+
+bool motion_is_homing() {
+    return _mode == MotionMode::HOMING;
 }
 
 void motion_set_settings(uint16_t max_speed_cdeg_s, uint16_t /*accel_cdeg_s2*/) {

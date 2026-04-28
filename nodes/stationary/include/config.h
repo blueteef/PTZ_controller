@@ -49,6 +49,13 @@
 #define ENCODER_GEAR_RATIO  4.0f    // 100t ring / 25t pinion
 
 // ---------------------------------------------------------------------------
+// Homing
+// ---------------------------------------------------------------------------
+#define HOME_DUTY           50      // PWM duty (0–255) during homing sweep — slow
+#define HOME_DIRECTION      1       // 1 = forward (RPWM), -1 = reverse (LPWM)
+#define HOME_TIMEOUT_MS     20000   // ms before fault if hall not found
+
+// ---------------------------------------------------------------------------
 // Hall effect sensor — revolution counter
 // Single magnet on rotating pan shaft collar, single sensor on stationary base.
 // Open-collector type (e.g. A3144): requires 10kΩ pullup to 3.3V.
