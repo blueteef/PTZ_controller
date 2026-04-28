@@ -217,12 +217,12 @@ void loop() {
     handle_can_rx();
 
     // ── Pi heartbeat watchdog — estop if Pi goes silent ───────────────
-    if (now - _last_pi_heartbeat_ms > CAN_TIMEOUT_MS) {
-        Serial.printf("[watchdog] Pi heartbeat lost (%lums) — estop\n",
-                      now - _last_pi_heartbeat_ms);
+    uint32_t hb_age = millis() - _last_pi_heartbeat_ms;
+    if (hb_age > CAN_TIMEOUT_MS) {
+        Serial.printf("[watchdog] Pi heartbeat lost (%lums) — estop\n", hb_age);
         motion_estop();
         send_fault(FAULT_CAN_TIMEOUT);
-        _last_pi_heartbeat_ms = now;
+        _last_pi_heartbeat_ms = millis();
     }
 
     // ── Motion tick (encoder update, position loop) ───────────────────
