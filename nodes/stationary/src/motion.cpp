@@ -379,8 +379,7 @@ bool motion_is_homing() {
 }
 
 void motion_clear_can_fault() {
-    // Only auto-recover from CAN timeout faults — hardware faults stay latched
-    if (_fault && _mode == MotionMode::IDLE) {
+    if (_fault) {
         _fault = false;
         Serial.println("[motion] CAN reconnected — fault cleared");
     }

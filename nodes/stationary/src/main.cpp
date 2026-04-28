@@ -218,9 +218,11 @@ void loop() {
 
     // ── Pi heartbeat watchdog — estop if Pi goes silent ───────────────
     if (now - _last_pi_heartbeat_ms > CAN_TIMEOUT_MS) {
+        Serial.printf("[watchdog] Pi heartbeat lost (%lums) — estop\n",
+                      now - _last_pi_heartbeat_ms);
         motion_estop();
         send_fault(FAULT_CAN_TIMEOUT);
-        _last_pi_heartbeat_ms = now;   // throttle fault frames
+        _last_pi_heartbeat_ms = now;
     }
 
     // ── Motion tick (encoder update, position loop) ───────────────────
