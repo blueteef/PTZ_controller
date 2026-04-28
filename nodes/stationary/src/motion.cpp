@@ -374,6 +374,14 @@ bool motion_is_homing() {
     return _mode == MotionMode::HOMING;
 }
 
+void motion_clear_can_fault() {
+    // Only auto-recover from CAN timeout faults — hardware faults stay latched
+    if (_fault && _mode == MotionMode::IDLE) {
+        _fault = false;
+        Serial.println("[motion] CAN reconnected — fault cleared");
+    }
+}
+
 void motion_set_settings(uint16_t max_speed_cdeg_s, uint16_t /*accel_cdeg_s2*/) {
     // accel is handled implicitly by PID rate limiting — ignore for now
     _max_speed_cdeg_s = (float)max_speed_cdeg_s;

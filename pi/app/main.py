@@ -78,7 +78,7 @@ async def lifespan(app: FastAPI):
 
     # Auto-home all nodes after a short delay to allow ESP32s to finish booting
     async def _auto_home():
-        await asyncio.sleep(5.0)
+        await asyncio.sleep(10.0)
         can_send(build_home_cmd(AXIS_ALL))
         log.info("Auto-home sent to all CAN nodes")
 

@@ -15,6 +15,7 @@ void    motion_estop();
 void    motion_home();           // trigger homing sweep to hall sensor
 bool    motion_is_homing();      // true while sweep is in progress
 void    motion_set_settings(uint16_t max_speed_cdeg_s, uint16_t accel_cdeg_s2);
+void    motion_clear_can_fault();   // clear fault caused by CAN timeout on reconnect
 
 // State readback
 int32_t  motion_get_pos_cdeg();

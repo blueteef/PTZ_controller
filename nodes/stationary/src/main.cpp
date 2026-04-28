@@ -17,7 +17,7 @@
 #define INTERVAL_ENV          1000      // 1 Hz
 #define INTERVAL_GPS          1000      // 1 Hz
 #define INTERVAL_HEARTBEAT    1000      // 1 Hz
-#define CAN_TIMEOUT_MS        3000      // estop if no Pi heartbeat for 3s
+#define CAN_TIMEOUT_MS        15000     // estop if no Pi heartbeat for 15s (allows Pi boot time)
 
 // ---------------------------------------------------------------------------
 // GPS
@@ -125,6 +125,7 @@ static void handle_can_rx() {
         switch (type) {
             case MSG_HEARTBEAT:
                 _last_pi_heartbeat_ms = millis();
+                motion_clear_can_fault();   // recover from CAN timeout fault when Pi reconnects
                 break;
 
             case MSG_ESTOP:
