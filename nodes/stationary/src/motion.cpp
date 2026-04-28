@@ -45,8 +45,6 @@ static uint8_t _bb_read_reg(uint8_t reg) {
 static uint16_t _enc_read_raw() {
     uint8_t hi = _bb_read_reg(0x03);
     uint8_t lo = _bb_read_reg(0x04);
-    Serial.printf("[enc] hi=0x%02X lo=0x%02X\n", hi, lo);
-    if (lo & 0x02) Serial.println("[enc] NO_MAG");
     return ((uint16_t)hi << 6) | (lo >> 2);
 }
 
@@ -69,7 +67,7 @@ static void IRAM_ATTR _hall_isr() {
 // ---------------------------------------------------------------------------
 // Combined position state
 // ---------------------------------------------------------------------------
-uint16_t _enc_prev_raw = 0;
+static uint16_t _enc_prev_raw = 0;
 static int32_t  _enc_abs_cdeg = 0;   // absolute pan position in centidegrees
 static int32_t  _home_offset  = 0;
 
