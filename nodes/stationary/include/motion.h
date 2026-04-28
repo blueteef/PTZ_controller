@@ -16,6 +16,7 @@ void    motion_home();
 void    motion_set_settings(uint16_t max_speed_cdeg_s, uint16_t accel_cdeg_s2);
 
 // State readback
-int32_t motion_get_pos_cdeg();
-int16_t motion_get_vel_cdeg_s();
-uint8_t motion_get_flags();      // POS_FLAG_* bitmask
+int32_t  motion_get_pos_cdeg();
+int16_t  motion_get_vel_cdeg_s();
+uint8_t  motion_get_flags();
+uint16_t motion_get_enc_raw();      // POS_FLAG_* bitmask

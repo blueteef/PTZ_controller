@@ -323,6 +323,8 @@ int16_t motion_get_vel_cdeg_s() {
     return (int16_t)_vel_cdeg_s;
 }
 
+uint16_t motion_get_enc_raw() { return _enc_prev_raw; }
+
 uint8_t motion_get_flags() {
     uint8_t f = 0;
     if (_mode != MotionMode::IDLE)  f |= POS_FLAG_MOVING;

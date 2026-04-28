@@ -229,7 +229,11 @@ void loop() {
     static uint32_t t_pos = 0, t_imu = 0, t_mag = 0, t_env = 0,
                     t_gps = 0, t_hb  = 0;
 
-    if (now - t_pos >= INTERVAL_POS_REPORT) { t_pos = now; send_pos_report(); }
+    if (now - t_pos >= INTERVAL_POS_REPORT) {
+        t_pos = now;
+        send_pos_report();
+        Serial.printf("[enc] raw=%u pos=%ld\n", motion_get_enc_raw(), motion_get_pos_cdeg());
+    }
     if (now - t_imu >= INTERVAL_IMU)        { t_imu = now; send_imu(); }
     if (now - t_mag >= INTERVAL_MAG)        { t_mag = now; send_mag(); }
     if (now - t_env >= INTERVAL_ENV)        { t_env = now; send_env(); }
