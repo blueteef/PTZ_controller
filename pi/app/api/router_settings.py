@@ -23,7 +23,8 @@ router = APIRouter(prefix="/api/settings")
 async def get_ui_config():
     """Frontend config values — initial state for all UI sliders/toggles."""
     return {
-        "max_speed_deg_s":   config.MAX_SPEED_DEG_S,
+        "max_speed_deg_s":     config.MAX_SPEED_DEG_S,
+        "default_speed_deg_s": config.DEFAULT_SPEED_DEG_S,
         "accel_deg_s2":      config.ACCEL_DEG_S2,
         "fine_speed_scale":  config.FINE_SPEED_SCALE,
         "tracking_speed":    config.PID_MAX_VEL_DEG_S,

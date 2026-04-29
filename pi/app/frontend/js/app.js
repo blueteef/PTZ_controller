@@ -234,7 +234,9 @@ function wireSpeedSlider() {
   const slider = document.getElementById("speed-slider");
   const label  = document.getElementById("speed-val");
 
+  const maxSpeed     = window._ptz_max_speed    ?? 180;
   const defaultSpeed = window._ptz_default_speed ?? 45;
+  slider.max   = maxSpeed;
   slider.value = defaultSpeed;
   label.textContent = defaultSpeed;
   window._ptz_max_vel = defaultSpeed;
@@ -578,7 +580,8 @@ window.addEventListener("DOMContentLoaded", async () => {
   try {
     const res = await fetch("/api/settings/ui");
     const cfg = await res.json();
-    window._ptz_default_speed  = cfg.max_speed_deg_s;
+    window._ptz_max_speed      = cfg.max_speed_deg_s;
+    window._ptz_default_speed  = cfg.default_speed_deg_s ?? cfg.max_speed_deg_s;
     window._ptz_default_accel  = cfg.accel_deg_s2;
     window._ptz_pan_invert     = cfg.pan_invert;
     window._ptz_tilt_invert    = cfg.tilt_invert;

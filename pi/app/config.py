@@ -158,7 +158,8 @@ FACE_ENROLL_FRAMES         = 5   # frames captured per enrollment session
 # These are pushed to the ESP32 on every connect via push_settings().
 # Changing them here (or via .env) is the only place you need to edit.
 # ---------------------------------------------------------------------------
-MAX_SPEED_DEG_S  = float(os.getenv("MAX_SPEED_DEG_S",  "45.0"))
+MAX_SPEED_DEG_S     = float(os.getenv("MAX_SPEED_DEG_S",     "180.0"))  # slider hard cap
+DEFAULT_SPEED_DEG_S = float(os.getenv("DEFAULT_SPEED_DEG_S",  "45.0"))   # slider start value
 ACCEL_DEG_S2     = float(os.getenv("ACCEL_DEG_S2",    "120.0"))
 FINE_SPEED_SCALE = float(os.getenv("FINE_SPEED_SCALE",  "0.2"))
 
