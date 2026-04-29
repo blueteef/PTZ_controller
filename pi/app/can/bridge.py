@@ -78,13 +78,19 @@ def send_estop() -> None:
 # Internal loops
 # ---------------------------------------------------------------------------
 
+_CAN_TIMEOUT_S = 3.0   # seconds without a frame before marking bus offline
+
 def _rx_loop() -> None:
+    last_rx = time.monotonic()
     while _running and _bus:
         try:
             msg = _bus.recv(timeout=1.0)
             if msg:
+                last_rx = time.monotonic()
                 state.serial_connected = True
                 parse_frame(msg)
+            elif time.monotonic() - last_rx > _CAN_TIMEOUT_S:
+                state.serial_connected = False
         except Exception as exc:
             if _running:
                 log.warning("CAN rx error: %s", exc)
