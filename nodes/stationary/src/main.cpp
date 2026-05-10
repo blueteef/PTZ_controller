@@ -224,6 +224,20 @@ void loop() {
         _last_pi_heartbeat_ms = millis();
     }
 
+    // ── TWAI bus-off recovery ─────────────────────────────────────────
+    static uint32_t t_twai_check = 0;
+    if (now - t_twai_check >= 500) {
+        t_twai_check = now;
+        twai_status_info_t s;
+        if (twai_get_status_info(&s) == ESP_OK) {
+            if (s.state == TWAI_STATE_BUS_OFF) {
+                twai_initiate_recovery();
+            } else if (s.state == TWAI_STATE_STOPPED) {
+                twai_start();
+            }
+        }
+    }
+
     // ── Motion tick (encoder update, position loop) ───────────────────
     motion_tick();
 
