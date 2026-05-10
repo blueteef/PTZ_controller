@@ -6,7 +6,6 @@ After=network.target
 Type=simple
 User=snyder
 WorkingDirectory=/home/snyder/PTZ_controller/pi
-AmbientCapabilities=CAP_NET_ADMIN
 ExecStart=/home/snyder/PTZ_controller/pi/venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000 --timeout-graceful-shutdown 3
 Restart=on-failure
 RestartSec=5
