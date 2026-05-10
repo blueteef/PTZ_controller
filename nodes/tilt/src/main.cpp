@@ -10,7 +10,7 @@
 // Telemetry intervals (ms)
 // ---------------------------------------------------------------------------
 #define INTERVAL_POS_REPORT     50      // 20 Hz
-#define INTERVAL_IMU            20      // 50 Hz
+#define INTERVAL_IMU            50      // 20 Hz
 #define INTERVAL_HEARTBEAT      1000    // 1 Hz
 #define CAN_TIMEOUT_MS          15000
 

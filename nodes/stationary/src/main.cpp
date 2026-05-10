@@ -12,7 +12,7 @@
 // Telemetry intervals (ms)
 // ---------------------------------------------------------------------------
 #define INTERVAL_POS_REPORT     50      // 20 Hz
-#define INTERVAL_IMU            20      // 50 Hz
+#define INTERVAL_IMU            50      // 20 Hz
 #define INTERVAL_MAG           200      // 5 Hz
 #define INTERVAL_ENV          1000      // 1 Hz
 #define INTERVAL_GPS          1000      // 1 Hz

@@ -11,7 +11,7 @@
 
 import { send } from "./app.js";
 
-const VEL_SEND_HZ = 25;
+const VEL_SEND_HZ = 10;
 let _velInterval  = null;
 let _panTarget    = 0;
 let _tiltTarget   = 0;
