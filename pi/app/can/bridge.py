@@ -25,7 +25,6 @@ _CAN_TIMEOUT_S       = 3.0    # seconds without a frame before marking bus offli
 _MAX_CONSECUTIVE_ERR = 3      # errors before attempting reconnect
 _RECONNECT_DELAY_S   = 2.0    # seconds to wait before reconnect attempt
 
-_send_error_count = 0         # consecutive send failures — triggers reconnect
 
 _bus:       can.BusABC | None = None
 _rx_thread: threading.Thread | None = None
@@ -65,19 +64,13 @@ def stop() -> None:
 
 
 def send(msg: can.Message) -> None:
-    global _send_error_count
     with _lock:
         if _bus is None:
             return
         try:
             _bus.send(msg)
-            _send_error_count = 0
         except Exception as exc:
-            _send_error_count += 1
-            log.warning("CAN send error (%d): %s", _send_error_count, exc)
-            if _send_error_count >= _MAX_CONSECUTIVE_ERR:
-                _send_error_count = 0
-                threading.Thread(target=_reconnect, daemon=True).start()
+            log.debug("CAN send error (dropped frame): %s", exc)
 
 
 def send_estop() -> None:
