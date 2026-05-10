@@ -226,7 +226,7 @@ void loop() {
 
     // ── TWAI bus-off recovery ─────────────────────────────────────────
     static uint32_t t_twai_check = 0;
-    if (now - t_twai_check >= 500) {
+    if (now - t_twai_check >= 100) {
         t_twai_check = now;
         twai_status_info_t s;
         if (twai_get_status_info(&s) == ESP_OK) {
@@ -235,6 +235,7 @@ void loop() {
             } else if (s.state == TWAI_STATE_STOPPED) {
                 twai_start();
             }
+            // TWAI_STATE_RECOVERING: recovery in progress, will be STOPPED on next check
         }
     }
 

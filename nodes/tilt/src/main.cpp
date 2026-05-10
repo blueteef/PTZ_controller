@@ -197,7 +197,7 @@ void loop() {
 
     // ── TWAI bus-off recovery ─────────────────────────────────────────
     static uint32_t t_twai_check = 0;
-    if (now - t_twai_check >= 500) {
+    if (now - t_twai_check >= 100) {
         t_twai_check = now;
         twai_status_info_t s;
         if (twai_get_status_info(&s) == ESP_OK) {
@@ -210,6 +210,7 @@ void loop() {
     }
 
     motion_tick();
+
 
     static uint32_t t_pos=0, t_imu=0, t_hb=0;
     if (now - t_pos >= INTERVAL_POS_REPORT) { t_pos=now; send_pos_report(); }
