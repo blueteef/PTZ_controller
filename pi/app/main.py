@@ -76,13 +76,8 @@ async def lifespan(app: FastAPI):
     # Inject bridge into tracker
     tracker_module.tracker = GimbalTracker(send_fn=bridge.send)
 
-    # Auto-home all nodes after a short delay to allow ESP32s to finish booting
-    async def _auto_home():
-        await asyncio.sleep(10.0)
-        can_send(build_home_cmd(AXIS_ALL))
-        log.info("Auto-home sent to all CAN nodes")
-
-    asyncio.create_task(_auto_home())
+    # Auto-home disabled — trigger manually via Home All button in sidebar
+    # (motor PWM causes CAN noise; home only when system is confirmed stable)
 
     log.info("All subsystems started")
     yield
