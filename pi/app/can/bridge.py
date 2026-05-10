@@ -9,6 +9,7 @@ Auto-reconnects if the interface goes into an error/bus-off state.
 from __future__ import annotations
 
 import logging
+import subprocess
 import threading
 import time
 
@@ -100,6 +101,23 @@ def _open_bus() -> can.BusABC | None:
         return None
 
 
+def _cycle_interface() -> None:
+    """Bring can0 down and back up to flush the kernel TX queue."""
+    ch = config.CAN_CHANNEL
+    try:
+        subprocess.run(["ip", "link", "set", ch, "down"], timeout=3, check=False)
+        time.sleep(0.3)
+        subprocess.run(
+            ["ip", "link", "set", ch, "up", "type", "can",
+             "bitrate", str(config.CAN_BITRATE), "restart-ms", "100"],
+            timeout=3, check=False,
+        )
+        time.sleep(0.5)
+        log.info("CAN interface %s cycled", ch)
+    except Exception as exc:
+        log.warning("Failed to cycle %s: %s", ch, exc)
+
+
 def _reconnect() -> None:
     global _bus
     log.warning("CAN bridge reconnecting...")
@@ -111,7 +129,9 @@ def _reconnect() -> None:
             except Exception:
                 pass
             _bus = None
-    time.sleep(_RECONNECT_DELAY_S)
+    # Cycle the OS interface to flush the kernel TX queue — socket reconnect alone
+    # does not clear ENOBUFS; need down/up to reset the MCP2515 TX buffers
+    _cycle_interface()
     new_bus = _open_bus()
     with _lock:
         _bus = new_bus
