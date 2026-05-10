@@ -3,6 +3,7 @@ bridge.py — CAN bus bridge (replaces serial_bridge for v2 hardware).
 
 Uses python-can against SocketCAN (can0 via MCP2515).
 Runs one RX thread and sends heartbeats on a fixed interval.
+Auto-reconnects if the interface goes into an error/bus-off state.
 """
 
 from __future__ import annotations
@@ -19,7 +20,10 @@ from app.state import state
 
 log = logging.getLogger(__name__)
 
-_HEARTBEAT_INTERVAL = 1.0   # seconds between Pi heartbeat frames
+_HEARTBEAT_INTERVAL  = 1.0    # seconds between Pi heartbeat frames
+_CAN_TIMEOUT_S       = 3.0    # seconds without a frame before marking bus offline
+_MAX_CONSECUTIVE_ERR = 3      # errors before attempting reconnect
+_RECONNECT_DELAY_S   = 2.0    # seconds to wait before reconnect attempt
 
 _bus:       can.BusABC | None = None
 _rx_thread: threading.Thread | None = None
@@ -31,11 +35,10 @@ _lock       = threading.Lock()
 def start() -> None:
     global _bus, _rx_thread, _hb_thread, _running
     try:
-        _bus = can.interface.Bus(
-            channel=config.CAN_CHANNEL,
-            bustype="socketcan",
-            bitrate=config.CAN_BITRATE,
-        )
+        _bus = _open_bus()
+        if _bus is None:
+            log.error("CAN bridge failed to open %s", config.CAN_CHANNEL)
+            return
         _running = True
         _rx_thread = threading.Thread(target=_rx_loop, daemon=True, name="can-rx")
         _hb_thread = threading.Thread(target=_hb_loop, daemon=True, name="can-heartbeat")
@@ -49,24 +52,23 @@ def start() -> None:
 def stop() -> None:
     global _running, _bus
     _running = False
-    if _bus:
-        _bus.shutdown()
-        _bus = None
+    with _lock:
+        if _bus:
+            try:
+                _bus.shutdown()
+            except Exception:
+                pass
+            _bus = None
     log.info("CAN bridge stopped")
 
 
-# ---------------------------------------------------------------------------
-# Public send helpers
-# ---------------------------------------------------------------------------
-
 def send(msg: can.Message) -> None:
-    """Send a pre-built CAN message."""
     with _lock:
         if _bus is None:
             return
         try:
             _bus.send(msg)
-        except can.CanError as exc:
+        except Exception as exc:
             log.warning("CAN send error: %s", exc)
 
 
@@ -75,25 +77,67 @@ def send_estop() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Internal loops
+# Internal helpers
 # ---------------------------------------------------------------------------
 
-_CAN_TIMEOUT_S = 3.0   # seconds without a frame before marking bus offline
+def _open_bus() -> can.BusABC | None:
+    try:
+        return can.interface.Bus(
+            channel=config.CAN_CHANNEL,
+            bustype="socketcan",
+            bitrate=config.CAN_BITRATE,
+        )
+    except Exception as exc:
+        log.warning("CAN open failed: %s", exc)
+        return None
+
+
+def _reconnect() -> None:
+    global _bus
+    log.warning("CAN bridge reconnecting...")
+    state.serial_connected = False
+    with _lock:
+        if _bus:
+            try:
+                _bus.shutdown()
+            except Exception:
+                pass
+            _bus = None
+    time.sleep(_RECONNECT_DELAY_S)
+    new_bus = _open_bus()
+    with _lock:
+        _bus = new_bus
+    if _bus:
+        log.info("CAN bridge reconnected on %s", config.CAN_CHANNEL)
+    else:
+        log.error("CAN bridge reconnect failed — will retry")
+
 
 def _rx_loop() -> None:
-    last_rx = time.monotonic()
-    while _running and _bus:
+    last_rx           = time.monotonic()
+    consecutive_errors = 0
+
+    while _running:
+        if _bus is None:
+            time.sleep(0.5)
+            continue
         try:
             msg = _bus.recv(timeout=1.0)
             if msg:
-                last_rx = time.monotonic()
+                last_rx            = time.monotonic()
+                consecutive_errors = 0
                 state.serial_connected = True
                 parse_frame(msg)
             elif time.monotonic() - last_rx > _CAN_TIMEOUT_S:
                 state.serial_connected = False
         except Exception as exc:
+            consecutive_errors += 1
             if _running:
-                log.warning("CAN rx error: %s", exc)
+                log.warning("CAN rx error (%d): %s", consecutive_errors, exc)
+            if consecutive_errors >= _MAX_CONSECUTIVE_ERR:
+                _reconnect()
+                consecutive_errors = 0
+                last_rx = time.monotonic()
 
 
 def _hb_loop() -> None:
