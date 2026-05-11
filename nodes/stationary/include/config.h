@@ -33,6 +33,7 @@
 
 #define MOTOR_PWM_FREQ  20000   // Hz — above audible range, reduces motor ringing
 #define MOTOR_PWM_BITS  8       // 0–255 resolution
+#define MOTOR_DEADBAND  30      // minimum duty to overcome static friction (0–255); tune on hardware
 
 // ---------------------------------------------------------------------------
 // MT6816 SPI encoder — read-only (no MOSI needed)

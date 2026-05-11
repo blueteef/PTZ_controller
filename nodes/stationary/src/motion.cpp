@@ -124,14 +124,24 @@ static void _pwm_init() {
 }
 
 // duty: -255 (full reverse) to +255 (full forward), 0 = coast
+// Deadband compensation: any non-zero duty below MOTOR_DEADBAND is raised to
+// MOTOR_DEADBAND to jump over motor static friction and avoid stick-slip stutter.
 static void _motor_set(int16_t duty) {
     _hall_dir = (duty >= 0);
-    if (duty >= 0) {
-        ledcWrite(0, (uint8_t)min((int16_t)255, duty));
+    if (duty == 0) {
+        ledcWrite(0, 0);
+        ledcWrite(1, 0);
+        return;
+    }
+    int16_t mag = abs(duty);
+    if (mag < MOTOR_DEADBAND) mag = MOTOR_DEADBAND;
+    mag = min(mag, (int16_t)255);
+    if (duty > 0) {
+        ledcWrite(0, (uint8_t)mag);
         ledcWrite(1, 0);
     } else {
         ledcWrite(0, 0);
-        ledcWrite(1, (uint8_t)min((int16_t)255, (int16_t)-duty));
+        ledcWrite(1, (uint8_t)mag);
     }
 }
 
