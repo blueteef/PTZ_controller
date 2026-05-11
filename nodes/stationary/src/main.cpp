@@ -28,16 +28,31 @@ static HardwareSerial _gps_serial(1);   // SERIAL1
 // ---------------------------------------------------------------------------
 // TWAI (CAN)
 // ---------------------------------------------------------------------------
-static void can_init() {
-    twai_general_config_t g = TWAI_GENERAL_CONFIG_DEFAULT(
-        (gpio_num_t)CAN_TX_PIN, (gpio_num_t)CAN_RX_PIN, TWAI_MODE_NORMAL
-    );
-    twai_timing_config_t  t = TWAI_TIMING_CONFIG_500KBITS();
-    twai_filter_config_t  f = TWAI_FILTER_CONFIG_ACCEPT_ALL();
+static twai_general_config_t _twai_g = TWAI_GENERAL_CONFIG_DEFAULT(
+    (gpio_num_t)CAN_TX_PIN, (gpio_num_t)CAN_RX_PIN, TWAI_MODE_NORMAL);
+static twai_timing_config_t  _twai_t = TWAI_TIMING_CONFIG_500KBITS();
+static twai_filter_config_t  _twai_f = TWAI_FILTER_CONFIG_ACCEPT_ALL();
 
-    ESP_ERROR_CHECK(twai_driver_install(&g, &t, &f));
+static void can_driver_install() {
+    // Uninstall any previous session first — clears stale hardware state
+    // left by crash-resets which can cause spurious TX complete interrupts
+    twai_stop();
+    twai_driver_uninstall();
+    delay(5);
+    ESP_ERROR_CHECK(twai_driver_install(&_twai_g, &_twai_t, &_twai_f));
     ESP_ERROR_CHECK(twai_start());
+}
+
+static void can_init() {
+    can_driver_install();
     Serial.println("[CAN] TWAI started at 500kbps");
+}
+
+// Full driver reinstall for bus-off recovery — safer than twai_initiate_recovery()
+// which races with the TX ISR and can corrupt tx_msg_count
+static void can_recover() {
+    Serial.println("[CAN] bus-off — reinstalling driver");
+    can_driver_install();
 }
 
 static void can_send(uint32_t arb_id, const void *data, uint8_t len) {
@@ -228,16 +243,13 @@ void loop() {
 
     // ── TWAI bus-off recovery ─────────────────────────────────────────
     static uint32_t t_twai_check = 0;
-    if (now - t_twai_check >= 100) {
+    if (now - t_twai_check >= 500) {
         t_twai_check = now;
         twai_status_info_t s;
-        if (twai_get_status_info(&s) == ESP_OK) {
-            if (s.state == TWAI_STATE_BUS_OFF) {
-                twai_initiate_recovery();
-            } else if (s.state == TWAI_STATE_STOPPED) {
-                twai_start();
-            }
-            // TWAI_STATE_RECOVERING: recovery in progress, will be STOPPED on next check
+        if (twai_get_status_info(&s) == ESP_OK &&
+            s.state != TWAI_STATE_RUNNING &&
+            s.state != TWAI_STATE_RECOVERING) {
+            can_recover();
         }
     }
 
