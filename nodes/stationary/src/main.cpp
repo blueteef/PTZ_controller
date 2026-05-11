@@ -41,12 +41,14 @@ static void can_init() {
 }
 
 static void can_send(uint32_t arb_id, const void *data, uint8_t len) {
+    twai_status_info_t s;
+    if (twai_get_status_info(&s) != ESP_OK || s.state != TWAI_STATE_RUNNING) return;
     twai_message_t msg = {};
     msg.identifier     = arb_id;
     msg.data_length_code = len;
     msg.extd           = 0;
     if (len && data) memcpy(msg.data, data, len);
-    twai_transmit(&msg, pdMS_TO_TICKS(5));
+    twai_transmit(&msg, pdMS_TO_TICKS(2));
 }
 
 // ---------------------------------------------------------------------------
